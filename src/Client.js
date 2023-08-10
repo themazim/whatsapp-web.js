@@ -105,9 +105,8 @@ class Client extends EventEmitter {
             if(!browserArgs.find(arg => arg.includes('--user-agent'))) {
                 browserArgs.push(`--user-agent=${this.options.userAgent}`);
             }
-            puppeteerOpts.setMaxListeners(0);
-
             browser = await puppeteer.launch({...puppeteerOpts, args: browserArgs});
+            browser.setMaxListeners(0);
             page = (await browser.pages())[0];
             browser.setMaxListeners(0);
         }
