@@ -90,6 +90,7 @@ class Client extends EventEmitter {
      * Sets up events and requirements, kicks off authentication request
      */
     async initialize() {
+        this.setMaxListeners(0);
         puppeteer.use(StealthPlugin());
         let [browser, page] = [null, null];
 
@@ -104,9 +105,11 @@ class Client extends EventEmitter {
             if(!browserArgs.find(arg => arg.includes('--user-agent'))) {
                 browserArgs.push(`--user-agent=${this.options.userAgent}`);
             }
+            puppeteerOpts.setMaxListeners(0);
 
             browser = await puppeteer.launch({...puppeteerOpts, args: browserArgs});
             page = (await browser.pages())[0];
+            browser.setMaxListeners(0);
         }
 
         if (this.options.proxyAuthentication !== undefined) {
