@@ -106,9 +106,9 @@ class Client extends EventEmitter {
                 browserArgs.push(`--user-agent=${this.options.userAgent}`);
             }
             browser = await puppeteer.launch({...puppeteerOpts, args: browserArgs});
-            browser.setMaxListeners(0);
             page = (await browser.pages())[0];
             browser.setMaxListeners(0);
+            page.setMaxListeners(0);
         }
 
         if (this.options.proxyAuthentication !== undefined) {
