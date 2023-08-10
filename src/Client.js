@@ -107,7 +107,6 @@ class Client extends EventEmitter {
             }
             browser = await puppeteer.launch({...puppeteerOpts, args: browserArgs});
             page = (await browser.pages())[0];
-            browser.setMaxListeners(0);
             page.setMaxListeners(0);
         }
 
