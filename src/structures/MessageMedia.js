@@ -72,10 +72,21 @@ class MessageMedia {
             throw new Error('Unable to determine MIME type using URL. Set unsafeMime to true to download it anyway.');
 
         async function fetchData (url, options) {
-            const reqOptions = Object.assign({ headers: { accept: 'image/* video/* text/* audio/*' } }, options);
+            const reqOptions = Object.assign({}, options);
             const response = await fetch(url, reqOptions);
             const mime = response.headers.get('Content-Type');
             const size = response.headers.get('Content-Length');
+
+            const mimeTypeResponse = response.headers.get('content-type').toLowerCase();
+
+            if (
+                !mimeTypeResponse.startsWith('image/')
+                && !mimeTypeResponse.startsWith('text/')
+                && !mimeTypeResponse.startsWith('video/')
+                && !mimeTypeResponse.startsWith('audio/')
+            ) {
+                throw new Error('Mime Type ' + mimeTypeResponse + ' not supported');
+            }
 
             const contentDisposition = response.headers.get('Content-Disposition');
             const name = contentDisposition ? contentDisposition.match(/((?<=filename=")(.*)(?="))/) : null;
