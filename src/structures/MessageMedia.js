@@ -84,6 +84,7 @@ class MessageMedia {
                 && !mimeTypeResponse.startsWith('text/')
                 && !mimeTypeResponse.startsWith('video/')
                 && !mimeTypeResponse.startsWith('audio/')
+                && !mimeTypeResponse.startsWith('application/')
             ) {
                 throw new Error('Mime Type ' + mimeTypeResponse + ' not supported');
             }
