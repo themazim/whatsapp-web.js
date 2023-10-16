@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const mime = require('mime');
 const fetch = require('node-fetch');
-const { URL } = require('url');
+const {URL} = require('url');
 
 /**
  * Media attached to a message
@@ -32,7 +32,7 @@ class MessageMedia {
          * @type {?string}
          */
         this.filename = filename;
-        
+
         /**
          * Document file size in bytes. Value can be null
          * @type {?number}
@@ -42,12 +42,12 @@ class MessageMedia {
 
     /**
      * Creates a MessageMedia instance from a local file path
-     * @param {string} filePath 
+     * @param {string} filePath
      * @returns {MessageMedia}
      */
     static fromFilePath(filePath) {
         const b64data = fs.readFileSync(filePath, {encoding: 'base64'});
-        const mimetype = mime.getType(filePath); 
+        const mimetype = mime.getType(filePath);
         const filename = path.basename(filePath);
 
         return new MessageMedia(mimetype, b64data, filename);
@@ -71,23 +71,24 @@ class MessageMedia {
         if (!mimetype && !options.unsafeMime)
             throw new Error('Unable to determine MIME type using URL. Set unsafeMime to true to download it anyway.');
 
-        async function fetchData (url, options) {
+        async function fetchData(url, options) {
             const reqOptions = Object.assign({}, options);
             const response = await fetch(url, reqOptions);
             const mime = response.headers.get('Content-Type');
             const size = response.headers.get('Content-Length');
-
-            const mimeTypeResponse = response.headers.get('content-type').toLowerCase();
-
-            if (
-                !mimeTypeResponse.startsWith('image/')
-                && !mimeTypeResponse.startsWith('text/')
-                && !mimeTypeResponse.startsWith('video/')
-                && !mimeTypeResponse.startsWith('audio/')
-                && !mimeTypeResponse.startsWith('application/')
-            ) {
-                throw new Error('Mime Type ' + mimeTypeResponse + ' not supported');
-            }
+            /*
+                        const mimeTypeResponse = response.headers.get('content-type').toLowerCase();
+            
+                        if (
+                            !mimeTypeResponse.startsWith('image/')
+                            && !mimeTypeResponse.startsWith('text/')
+                            && !mimeTypeResponse.startsWith('video/')
+                            && !mimeTypeResponse.startsWith('audio/')
+                            && !mimeTypeResponse.startsWith('application/')
+                        ) {
+                            throw new Error('Mime Type ' + mimeTypeResponse + ' not supported');
+                        }
+             */
 
             const contentDisposition = response.headers.get('Content-Disposition');
             const name = contentDisposition ? contentDisposition.match(/((?<=filename=")(.*)(?="))/) : null;
@@ -102,8 +103,8 @@ class MessageMedia {
                 });
                 data = btoa(data);
             }
-            
-            return { data, mime, name, size };
+
+            return {data, mime, name, size};
         }
 
         const res = options.client
@@ -112,7 +113,7 @@ class MessageMedia {
 
         const filename = options.filename ||
             (res.name ? res.name[0] : (pUrl.pathname.split('/').pop() || 'file'));
-        
+
         if (!mimetype)
             mimetype = res.mime;
 
