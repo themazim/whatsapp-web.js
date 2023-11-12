@@ -38,6 +38,24 @@ declare namespace WAWebJS {
         /** Creates a new group */
         createGroup(title: string, participants?: string | Contact | Contact[] | string[], options?: CreateGroupOptions): Promise<CreateGroupResult|string>
 
+        /** Creates a new channel */
+        createChannel(title: string, options?: CreateChannelOptions): Promise<CreateChannelResult | {}>
+
+        /** Subscribe to channel */
+        subscribeToChannel(channelId: string): Promise<boolean>
+
+        /** Unsubscribe from channel */
+        unsubscribeFromChannel(channelId: string, options?: UnsubscribeOptions): Promise<boolean>
+
+        /**
+         * Searches for channels based on search criteria, there are some notes:
+         * 1. The method finds only channels you are not subscribed to currently
+         * 2. If you have never been subscribed to a found channel
+         * or you have unsubscribed from it with {@link UnsubscribeOptions.deleteLocalModels} set to 'true',
+         * the lastMessage property of a found channel will be 'null'
+         */
+        searchChannels(searchOptions: SearchChannelsOptions): Promise<Array<Channel> | []>
+
         /** Closes the client */
         destroy(): Promise<void>
 
@@ -55,6 +73,19 @@ declare namespace WAWebJS {
 
         /** Get all current chat instances */
         getChats(): Promise<Chat[]>
+
+        /** Gets channel instance by ID */
+        getChannelById(channelId: string): Promise<Channel>
+
+        /**
+         * Gets all channel instances as follows:
+         * 
+         * 1. Channels the current user is subscribed to
+         * 2. Channels the current user was subscribed to
+         * and from which was unsubscribed with the {@link UnsubscribeOptions.deleteLocalModels} set to 'false'
+         * 3. Channels the current user created
+         */
+        getChannels(): Promise<Channel[]>
 
         /** Get contact instance by ID */
         getContactById(contactId: string): Promise<Contact>
@@ -118,7 +149,7 @@ declare namespace WAWebJS {
         resetState(): Promise<void>
 
         /** Send a message to a specific chatId */
-        sendMessage(chatId: string, content: MessageContent, options?: MessageSendOptions): Promise<Message>
+        sendMessage(chatOrChannelId: string, content: MessageContent, options?: MessageSendOptions): Promise<Message>
         
         /** Searches for messages */
         searchMessages(query: string, options?: { chatId?: string, page?: number, limit?: number }): Promise<Message[]>
@@ -601,6 +632,49 @@ declare namespace WAWebJS {
                 isInviteV4Sent: boolean
             };
         };
+    }
+
+    /** An object that handles options for channel creation */
+    export interface CreateChannelOptions {
+        /** The channel description */
+        description?: string,
+        /** The channel profile picture */
+        picture?: MessageMedia
+    }
+
+    /** An object that handles the result for createGroup method */
+    export interface CreateChannelResult {
+        /** A channel title */
+        title: string,
+        /** An object that handles the newly created channel ID */
+        nid: ChatId,
+        /** The channel invite link, starts with 'https://whatsapp.com/channel/' */
+        inviteLink: string,
+        /** The timestamp the channel was created at */
+        createdAtTs: number
+    }
+
+    /** Options for unsubscribe from a channel */
+    export interface UnsubscribeOptions {
+        /**
+         * If true, after an unsubscription, it will completely remove a channel and its data
+         * from your local env making it seem like you have never been subscribed to it.
+         * Otherwise it will remove a channel from your channel list
+         * and set your membership type for that channel to GUEST
+         */
+        deleteLocalModels?: boolean
+    }
+
+    /** Options for searching for channels */
+    export interface SearchChannelsOptions {
+        countryCodes?: string[];
+        sortOptions: {
+            field?: string;
+            order?: string;
+        };
+        searchText?: string;
+        view?: string;
+        limit?: number;
     }
 
     export interface GroupNotification {
@@ -1281,6 +1355,67 @@ declare namespace WAWebJS {
         getLabels: () => Promise<Label[]>,
         /** Add or remove labels to this Chat */
         changeLabels: (labelIds: Array<string | number>) => Promise<void>
+    }
+
+    export interface Channel {
+        /** ID that represents the channel */
+        id: {
+            server: string;
+            user: string;
+            _serialized: string;
+        };
+        /** Title of the channel */
+        name: string;
+        /** The channel description */
+        description: string;
+        /** Indicates if it is a Channel */
+        isChannel: boolean;
+        /** Indicates if it is a Group */
+        isGroup: boolean;
+        /** Indicates if the channel is readonly */
+        isReadOnly: boolean;
+        /** Amount of messages unread */
+        unreadCount: number;
+        /** Unix timestamp for when the last activity occurred */
+        timestamp: number;
+        /** Indicates if the channel is muted or not */
+        isMuted: boolean;
+        /** Unix timestamp for when the mute expires */
+        muteExpiration: number;
+        /** Last message in the channel */
+        lastMessage: Message | undefined;
+
+        /** Updates the channel subject */
+        setSubject(newSubject: string): Promise<boolean>;
+        /** Updates the channel description */
+        setDescription(newDescription: string): Promise<boolean>;
+        /** Updates the channel profile picture */
+        setProfilePicture(newProfilePicture: MessageMedia): Promise<boolean>;
+        /**
+         * Updates available reactions to use in the channel
+         * 
+         * Valid values for passing to the method are:
+         * 0 for ALL reactions to be available
+         * 1 for BASIC reactions to be available: 👍, ❤️, 😂, 😮, 😢, 🙏
+         * 3 for NONE reactions to be avaliable
+         */
+        setReactionSetting(reactionCode: number): Promise<boolean>;
+        /** Sends a message to this channel */
+        sendMessage(content: string|MessageMedia, options?: MessageSendChannelOptions): Promise<Message>;
+        /** Deletes the channel you created */
+        deleteChannel(): Promise<boolean>;
+    }
+
+    /** Options for sending a message */
+    export interface MessageSendChannelOptions {
+        /** Image or videos caption */
+        caption?: string
+        /** User IDs of user that will be mentioned in the message */
+        mentions?: string[]
+        /** Image or video to be sent */
+        media?: MessageMedia
+        /** Extra options */
+        extra?: any
     }
 
     export interface MessageSearchOptions {
