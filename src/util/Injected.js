@@ -69,6 +69,10 @@ exports.ExposeStore = (moduleRaidStr) => {
     window.Store.ReplyUtils = (m = window.mR.findModule('canReplyMsg')).length > 0 && m[0];
     /* eslint-enable no-undef, no-cond-assign */
 
+    window.Store.Settings = {
+        ...window.mR.findModule('ChatlistPanelState')[0],
+        setPushname: window.mR.findModule((m) => m.setPushname && !m.ChatlistPanelState)[0].setPushname
+    };
     window.Store.StickerTools = {
         ...window.mR.findModule('toWebpSticker')[0],
         ...window.mR.findModule('addWebpMetadata')[0]
@@ -536,6 +540,44 @@ exports.LoadUtils = () => {
         return msg;
     };
 
+    window.WWebJS.getPollVoteModel = (vote) => {
+        const _vote = vote.serialize();
+        if (vote.parentMsgKey) {
+            const msg = window.Store.Msg.get(vote.parentMsgKey);
+            msg && (_vote.parentMessage = window.WWebJS.getMessageModel(msg));
+            return _vote;
+        }
+        return null;
+    };
+
+    window.WWebJS.getChatModel = async chat => {
+
+        let res = chat.serialize();
+        res.isGroup = chat.isGroup;
+        res.formattedTitle = chat.formattedTitle;
+        res.isMuted = chat.mute && chat.mute.isMuted;
+
+        if (chat.groupMetadata) {
+            const chatWid = window.Store.WidFactory.createWid((chat.id._serialized));
+            await window.Store.GroupMetadata.update(chatWid);
+            res.groupMetadata = chat.groupMetadata.serialize();
+        }
+        
+        res.lastMessage = null;
+        if (res.msgs && res.msgs.length) {
+            const lastMessage = chat.lastReceivedKey ? window.Store.Msg.get(chat.lastReceivedKey._serialized) : null;
+            if (lastMessage) {
+                res.lastMessage = window.WWebJS.getMessageModel(lastMessage);
+            }
+        }
+        
+        delete res.msgs;
+        delete res.msgUnsyncedButtonReplyMsgs;
+        delete res.unsyncedButtonReplies;
+
+        return res;
+    };
+
     window.WWebJS.getChatOrChannel = async (chatOrChannelId, options = {}) => {
         const { getAsModel = true } = options;
         const isChannel = chatOrChannelId.match(/@(.+)/)[1] === 'newsletter';
@@ -566,6 +608,12 @@ exports.LoadUtils = () => {
         return getAsModel && chatOrChannel
             ? await window.WWebJS.getChatOrChannelModel(chatOrChannel, { isChannel: isChannel })
             : chatOrChannel;
+    };
+
+    window.WWebJS.getChat = async chatId => {
+        const chatWid = window.Store.WidFactory.createWid(chatId);
+        const chat = await window.Store.Chat.find(chatWid);
+        return await window.WWebJS.getChatModel(chat);
     };
 
     window.WWebJS.getChats = async () => {
