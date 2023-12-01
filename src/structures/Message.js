@@ -483,7 +483,7 @@ class Message extends Base {
      * @param {?boolean} everyone If true and the message is sent by the current user or the user is an admin, will delete it for everyone in the chat.
      */
     async delete(everyone) {
-        await this.client.pupPage.evaluate(async (msgId, everyone) => {
+        return await this.client.pupPage.evaluate(async (msgId, everyone) => {
             let msg = window.Store.Msg.get(msgId);
             let chat = await window.Store.Chat.find(msg.id.remote);
             
