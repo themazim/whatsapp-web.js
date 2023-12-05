@@ -880,12 +880,12 @@ class Client extends EventEmitter {
 
         if (content instanceof MessageMedia) {
             internalOptions.media = content;
-            internalOptions.isViewOnce = options.isViewOnce,
+            internalOptions.isViewOnce = options.isViewOnce;
             content = '';
         } else if (options.media instanceof MessageMedia) {
             internalOptions.media = options.media;
             internalOptions.caption = content;
-            internalOptions.isViewOnce = options.isViewOnce,
+            internalOptions.isViewOnce = options.isViewOnce;
             content = '';
         } else if (content instanceof Location) {
             internalOptions.location = content;
