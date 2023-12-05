@@ -398,6 +398,14 @@ declare namespace WAWebJS {
 
         /** Emitted when the RemoteAuth session is saved successfully on the external Database */
         on(event: 'remote_session_saved', listener: () => void): this
+
+        /**
+         * Emitted when some poll option is selected or deselected,
+         * shows a user's current selected option(s) on the poll
+         */
+        on(event: 'vote_update', listener: (
+            vote: PollVote
+        ) => void): this
     }
 
     /** Current connection information */
@@ -1092,6 +1100,34 @@ declare namespace WAWebJS {
         constructor(pollName: string, pollOptions: Array<string>, options?: PollSendOptions)
     }
 
+    /** Represents a Poll Vote on WhatsApp */
+    export interface PollVote {
+        /** The person who voted */
+        voter: string;
+
+        /**
+         * The selected poll option(s)
+         * If it's an empty array, the user hasn't selected any options on the poll,
+         * may occur when they deselected all poll options
+         */
+        selectedOptions: SelectedPollOption[];
+
+        /** Timestamp the option was selected or deselected at */
+        interractedAtTs: number;
+
+        /** The poll creation message associated with the poll vote */
+        parentMessage: Message;
+    }
+
+    /** Selected poll option structure */
+    export interface SelectedPollOption {
+        /** The local selected option ID */
+        id: number;
+
+        /** The option name */
+        name: string;
+    }
+
     export interface Label {
         /** Label name */
         name: string,
@@ -1602,7 +1638,7 @@ declare namespace WAWebJS {
          * @default ''
          */
         comment?: string
-    };
+    }
 
     /** An object that handles the information about the group membership request */
     export interface GroupMembershipRequest {

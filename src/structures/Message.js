@@ -277,12 +277,14 @@ class Message extends Base {
             this.allowMultipleAnswers = Boolean(!data.pollSelectableOptionsCount);
             this.pollInvalidated = data.pollInvalidated;
             this.isSentCagPollCreation = data.isSentCagPollCreation;
+            this.messageSecret = Object.keys(data.messageSecret).map((key) =>  data.messageSecret[key]);
 
             delete this._data.pollName;
             delete this._data.pollOptions;
             delete this._data.pollSelectableOptionsCount;
             delete this._data.pollInvalidated;
             delete this._data.isSentCagPollCreation;
+            delete this._data.messageSecret;
         }
 
         return super._patch(data);
@@ -644,7 +646,7 @@ class Message extends Base {
             let msg = window.Store.Msg.get(msgId);
             if (!msg) return null;
 
-            let catEdit = (msg.type === 'chat' && window.Store.MsgActionChecks.canEditText(msg));
+            let catEdit = window.Store.MsgActionChecks.canEditText(msg) || window.Store.MsgActionChecks.canEditCaption(msg);
             if (catEdit) {
                 const msgEdit = await window.WWebJS.editMessage(msg, message, options);
                 return msgEdit.serialize();
