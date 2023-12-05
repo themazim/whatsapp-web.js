@@ -12,7 +12,7 @@ const { ExposeStore, LoadUtils } = require('./util/Injected');
 const ChatFactory = require('./factories/ChatFactory');
 const ContactFactory = require('./factories/ContactFactory');
 const WebCacheFactory = require('./webCache/WebCacheFactory');
-const { ClientInfo, Message, MessageMedia, Contact,Channel, Location, Poll,PollVote, GroupNotification, Label, Call, Buttons, List, Reaction } = require('./structures');
+const { ClientInfo, Message, MessageMedia, Contact, Channel, Location, Poll, GroupNotification, Label, Call, Reaction } = require('./structures');
 const LegacySessionAuth = require('./authStrategies/LegacySessionAuth');
 const NoAuth = require('./authStrategies/NoAuth');
 
@@ -31,10 +31,10 @@ const NoAuth = require('./authStrategies/NoAuth');
  * @param {number} options.takeoverOnConflict - If another whatsapp web session is detected (another browser), take over the session in the current browser
  * @param {number} options.takeoverTimeoutMs - How much time to wait before taking over the session
  * @param {string} options.userAgent - User agent to use in puppeteer
- * @param {string} options.ffmpegPath - Ffmpeg path to use when formatting videos to webp while sending stickers 
+ * @param {string} options.ffmpegPath - Ffmpeg path to use when formatting videos to webp while sending stickers
  * @param {boolean} options.bypassCSP - Sets bypassing of page's Content-Security-Policy.
  * @param {object} options.proxyAuthentication - Proxy Authentication object.
- * 
+ *
  * @fires Client#qr
  * @fires Client#authenticated
  * @fires Client#auth_failure
@@ -54,7 +54,6 @@ const NoAuth = require('./authStrategies/NoAuth');
  * @fires Client#contact_changed
  * @fires Client#group_admin_changed
  * @fires Client#group_membership_request
- * @fires Client#vote_update
  */
 class Client extends EventEmitter {
     constructor(options = {}) {
@@ -441,7 +440,7 @@ class Client extends EventEmitter {
                  * Emitted when a message is deleted for everyone in the chat.
                  * @event Client#message_revoke_everyone
                  * @param {Message} message The message that was revoked, in its current state. It will not contain the original message's data.
-                 * @param {?Message} revoked_msg The message that was revoked, before it was revoked. It will contain the message's original data. 
+                 * @param {?Message} revoked_msg The message that was revoked, before it was revoked. It will contain the message's original data.
                  * Note that due to the way this data is captured, it may be possible that this param will be undefined.
                  */
                 this.emit(Events.MESSAGE_REVOKED_EVERYONE, message, revoked_msg);
@@ -518,7 +517,7 @@ class Client extends EventEmitter {
 
         await page.exposeFunction('onChatUnreadCountEvent', async (data) =>{
             const chat = await this.getChatById(data.id);
-            
+
             /**
              * Emitted when the chat unread count changes
              */
@@ -635,10 +634,10 @@ class Client extends EventEmitter {
              */
             this.emit(Events.CHAT_REMOVED, _chat);
         });
-        
+
         await page.exposeFunction('onArchiveChatEvent', async (chat, currState, prevState) => {
             const _chat = await this.getChatById(chat.id);
-            
+
             /**
              * Emitted when a chat is archived/unarchived
              * @event Client#chat_archived
@@ -650,7 +649,7 @@ class Client extends EventEmitter {
         });
 
         await page.exposeFunction('onEditMessageEvent', (msg, newBody, prevBody) => {
-            
+
             if(msg.type === 'revoked'){
                 return;
             }
@@ -692,7 +691,7 @@ class Client extends EventEmitter {
                         // defer message event until ciphertext is resolved (type changed)
                         msg.once('change:type', (_msg) => window.onAddMessageEvent(window.WWebJS.getMessageModel(_msg)));
                     } else {
-                        window.onAddMessageEvent(window.WWebJS.getMessageModel(msg)); 
+                        window.onAddMessageEvent(window.WWebJS.getMessageModel(msg));
                     }
                 }
             });
@@ -752,7 +751,7 @@ class Client extends EventEmitter {
                         status: 200,
                         contentType: 'text/html',
                         body: versionContent
-                    }); 
+                    });
                 } else {
                     req.continue();
                 }
@@ -782,13 +781,13 @@ class Client extends EventEmitter {
             return window.Store.AppState.logout();
         });
         await this.pupBrowser.close();
-        
+
         let maxDelay = 0;
         while (this.pupBrowser.isConnected() && (maxDelay < 10)) { // waits a maximum of 1 second before calling the AuthStrategy
             await new Promise(resolve => setTimeout(resolve, 100));
-            maxDelay++; 
+            maxDelay++;
         }
-        
+
         await this.authStrategy.logout();
     }
 
@@ -806,7 +805,7 @@ class Client extends EventEmitter {
      * Mark as seen for the Chat
      *  @param {string} chatId
      *  @returns {Promise<boolean>} result
-     * 
+     *
      */
     async sendSeen(chatId) {
         const result = await this.pupPage.evaluate(async (chatId) => {
@@ -836,13 +835,13 @@ class Client extends EventEmitter {
      * @property {MessageMedia} [media] - Media to be sent
      * @property {any} [extra] - Extra options
      */
-    
+
     /**
      * Send a message to a specific chatId
      * @param {string} chatOrChannelId
      * @param {string|MessageMedia|Location|Poll|Contact|Array<Contact>} content
      * @param {MessageSendOptions} [options] - Options used when sending the message
-     * 
+     *
      * @returns {Promise<Message>} Message that was just sent
      */
     async sendMessage(chatOrChannelId, content, options = {}) {
@@ -857,7 +856,7 @@ class Client extends EventEmitter {
             console.warn('The message type is currently not supported for sending in channels,\nthe supported message types are: text, image, sticker, gif or video.\nTo stay updated on supported message types to send in channels, see https://github.com/pedroslopez/whatsapp-web.js/pull/2620');
             return null;
         }
-    
+
         if (options.mentions && options.mentions.some(possiblyContact => possiblyContact instanceof Contact)) {
             console.warn('Mentions with an array of Contact are now deprecated. See more at https://github.com/pedroslopez/whatsapp-web.js/pull/2166');
             options.mentions = options.mentions.map(a => a.id._serialized);
@@ -940,7 +939,7 @@ class Client extends EventEmitter {
      * Sends a channel admin invitation to a user, allowing them to become an admin of the channel
      * @param {string} chatId The ID of a user to send the channel admin invitation to
      * @param {string} channelId The ID of a channel for which the invitation is being sent
-     * @param {SendChannelAdminInvitationOptions} options 
+     * @param {SendChannelAdminInvitationOptions} options
      * @returns {Promise<boolean>} Returns true if an invitation was sent successfully, false otherwise
      */
     async sendChannelAdminInvitation(chatId, channelId, options = {}) {
@@ -952,7 +951,7 @@ class Client extends EventEmitter {
             if (!chatWid.isUser() || !window.Store.ChannelUtils.isNewsletterMultiAdminReceiverEnabled()) {
                 return false;
             }
-            
+
             return await window.Store.SendChannelMessage.sendNewsletterAdminInviteMessage(
                 chat,
                 {
@@ -966,7 +965,7 @@ class Client extends EventEmitter {
 
         return response.messageSendResult === 'OK';
     }
-    
+
     /**
      * Searches for messages
      * @param {string} query
@@ -999,7 +998,7 @@ class Client extends EventEmitter {
 
     /**
      * Get chat instance by ID
-     * @param {string} chatId 
+     * @param {string} chatId
      * @returns {Promise<Chat>}
      */
     async getChatById(chatId) {
@@ -1038,7 +1037,7 @@ class Client extends EventEmitter {
 
     /**
      * Gets a {@link Channel} object or a {@link ChannelMetadata} by its ID
-     * @param {string} channelId 
+     * @param {string} channelId
      * @param {GetChannelOptions} options
      * @returns {Promise<ChannelMetadata|Channel>}
      */
@@ -1116,7 +1115,7 @@ class Client extends EventEmitter {
 
         return ContactFactory.create(this, contact);
     }
-    
+
     async getMessageById(messageId) {
         const msg = await this.pupPage.evaluate(async messageId => {
             let msg = window.Store.Msg.get(messageId);
@@ -1127,7 +1126,7 @@ class Client extends EventEmitter {
 
             let messagesObject = await window.Store.Msg.getMessagesById([messageId]);
             if (messagesObject && messagesObject.messages.length) msg = messagesObject.messages[0];
-            
+
             if(msg) return window.WWebJS.getMessageModel(msg);
         }, messageId);
 
@@ -1137,7 +1136,7 @@ class Client extends EventEmitter {
 
     /**
      * Returns an object with information about the invite code's group
-     * @param {string} inviteCode 
+     * @param {string} inviteCode
      * @returns {Promise<object>} Invite information
      */
     async getInviteInfo(inviteCode) {
@@ -1185,7 +1184,7 @@ class Client extends EventEmitter {
     }
 
     /**
-     * Sets the current user's display name. 
+     * Sets the current user's display name.
      * This is the name shown to WhatsApp users that have not added you as a contact beside your number in groups and in your profile.
      * @param {string} displayName New display name
      * @returns {Promise<Boolean>}
@@ -1205,10 +1204,10 @@ class Client extends EventEmitter {
 
         return couldSet;
     }
-    
+
     /**
      * Gets the current connection state for the client
-     * @returns {WAState} 
+     * @returns {WAState}
      */
     async getState() {
         return await this.pupPage.evaluate(() => {
@@ -1347,7 +1346,7 @@ class Client extends EventEmitter {
                 throw err;
             }
         }, contactId);
-        
+
         return profilePic ? profilePic.eurl : undefined;
     }
 
@@ -1383,7 +1382,7 @@ class Client extends EventEmitter {
 
     /**
      * Force reset of connection state for the client
-    */
+     */
     async resetState() {
         await this.pupPage.evaluate(() => {
             window.Store.AppState.phoneWatchdog.shiftTimer.forceRunNow();
@@ -1400,7 +1399,7 @@ class Client extends EventEmitter {
     }
 
     /**
-     * Get the registered WhatsApp ID for a number. 
+     * Get the registered WhatsApp ID for a number.
      * Will return null if the number is not registered on WhatsApp.
      * @param {string} number Number or ID ("@c.us" will be automatically appended if not specified)
      * @returns {Promise<Object|null>}
@@ -1580,7 +1579,7 @@ class Client extends EventEmitter {
     /**
      * Creates a new channel
      * @param {string} title The channel name
-     * @param {CreateChannelOptions} options 
+     * @param {CreateChannelOptions} options
      * @returns {Promise<CreateChannelResult|string>} Returns an object that handles the result for the channel creation or an error message as a string
      */
     async createChannel(title, options = {}) {
@@ -1730,7 +1729,7 @@ class Client extends EventEmitter {
     }
 
     /**
-     * Get all Labels assigned to a chat 
+     * Get all Labels assigned to a chat
      * @param {string} chatId
      * @returns {Promise<Array<Label>>}
      */
@@ -1799,7 +1798,7 @@ class Client extends EventEmitter {
 
         return success;
     }
-    
+
     /**
      * Change labels in chats
      * @param {Array<number|string>} labelIds
