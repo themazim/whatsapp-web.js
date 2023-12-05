@@ -8,93 +8,91 @@ const Message = require('./Message');
  * @extends {Base}
  */
 class Chat extends Base {
-  constructor(client, data) {
-    super(client);
+    constructor(client, data) {
+        super(client);
 
-    if (data) this._patch(data);
-  }
+        if (data) this._patch(data);
+    }
 
-  _patch(data) {
+    _patch(data) {
+        /**
+         * ID that represents the chat
+         * @type {object}
+         */
+        this.id = data.id;
+
+        /**
+         * Title of the chat
+         * @type {string}
+         */
+        this.name = data.formattedTitle;
+
+        /**
+         * Indicates if the Chat is a Group Chat
+         * @type {boolean}
+         */
+        this.isGroup = data.isGroup;
+
+        /**
+         * Indicates if the Chat is readonly
+         * @type {boolean}
+         */
+        this.isReadOnly = data.isReadOnly;
+
+        /**
+         * Amount of messages unread
+         * @type {number}
+         */
+        this.unreadCount = data.unreadCount;
+
+        /**
+         * Unix timestamp for when the last activity occurred
+         * @type {number}
+         */
+        this.timestamp = data.t;
+
+        /**
+         * Indicates if the Chat is archived
+         * @type {boolean}
+         */
+        this.archived = data.archive;
+
+        /**
+         * Indicates if the Chat is pinned
+         * @type {boolean}
+         */
+        this.pinned = !!data.pin;
+
+        /**
+         * Indicates if the chat is muted or not
+         * @type {boolean}
+         */
+        this.isMuted = data.isMuted;
+
+        /**
+         * Unix timestamp for when the mute expires
+         * @type {number}
+         */
+        this.muteExpiration = data.muteExpiration;
+
+        /**
+         * Last message fo chat
+         * @type {Message}
+         */
+        this.lastMessage = data.lastMessage ? new Message(super.client, data.lastMessage) : undefined;
+        
+        return super._patch(data);
+    }
+
     /**
-     * ID that represents the chat
-     * @type {object}
+     * Send a message to this chat
+     * @param {string|MessageMedia|Location} content
+     * @param {MessageSendOptions} [options] 
+     * @returns {Promise<Message>} Message that was just sent
      */
-    this.id = data.id;
-
-    /**
-     * Title of the chat
-     * @type {string}
-     */
-    this.name = data.formattedTitle;
-
-    /**
-     * Indicates if the Chat is a Group Chat
-     * @type {boolean}
-     */
-    this.isGroup = data.isGroup;
-
-    /**
-     * Indicates if the Chat is readonly
-     * @type {boolean}
-     */
-    this.isReadOnly = data.isReadOnly;
-
-    /**
-     * Amount of messages unread
-     * @type {number}
-     */
-    this.unreadCount = data.unreadCount;
-
-    /**
-     * Unix timestamp for when the last activity occurred
-     * @type {number}
-     */
-    this.timestamp = data.t;
-
-    /**
-     * Indicates if the Chat is archived
-     * @type {boolean}
-     */
-    this.archived = data.archive;
-
-    /**
-     * Indicates if the Chat is pinned
-     * @type {boolean}
-     */
-    this.pinned = !!data.pin;
-
-    /**
-     * Indicates if the chat is muted or not
-     * @type {boolean}
-     */
-    this.isMuted = data.isMuted;
-
-    /**
-     * Unix timestamp for when the mute expires
-     * @type {number}
-     */
-    this.muteExpiration = data.muteExpiration;
-
-    /**
-     * Last message fo chat
-     * @type {Message}
-     */
-    this.lastMessage = data.lastMessage
-      ? new Message(super.client, data.lastMessage)
-      : undefined;
-
-    return super._patch(data);
-  }
-
-  /**
-   * Send a message to this chat
-   * @param {string|MessageMedia|Location} content
-   * @param {MessageSendOptions} [options]
-   * @returns {Promise<Message>} Message that was just sent
-   */
-  async sendMessage(content, options) {
-    return this.client.sendMessage(this.id._serialized, content, options);
-  }
+    async sendMessage(content, options) {
+        return this.client.sendMessage(this.id._serialized, content, options);
+    }
 
     /**
      * Set the message as seen
@@ -176,27 +174,24 @@ class Chat extends Base {
         return this.client.markChatUnread(this.id._serialized);
     }
 
-  /**
-   * Loads chat messages, sorted from earliest to latest.
-   * @param {Object} searchOptions Options for searching messages. Right now only limit and fromMe is supported.
-   * @param {Number} [searchOptions.limit] The amount of messages to return. If no limit is specified, the available messages will be returned. Note that the actual number of returned messages may be smaller if there aren't enough messages in the conversation. Set this to Infinity to load all messages.
-   * @param {Boolean} [searchOptions.fromMe] Return only messages from the bot number or vise versa. To get all messages, leave the option undefined.
-   * @returns {Promise<Array<Message>>}
-   */
-  async fetchMessages(searchOptions) {
-    let messages = await this.client.pupPage.evaluate(
-      async (chatId, searchOptions) => {
-        const msgFilter = (m) => {
-          if (m.isNotification) {
-            return false; // don't include notification messages
-          }
-          if (searchOptions && searchOptions.fromMe !== undefined) {
-            if (m.id.fromMe !== searchOptions.fromMe) {
-              return false; // Skip messages that don't match the fromMe condition
-            }
-          }
-          return true;
-        };
+    /**
+     * Loads chat messages, sorted from earliest to latest.
+     * @param {Object} searchOptions Options for searching messages. Right now only limit and fromMe is supported.
+     * @param {Number} [searchOptions.limit] The amount of messages to return. If no limit is specified, the available messages will be returned. Note that the actual number of returned messages may be smaller if there aren't enough messages in the conversation. Set this to Infinity to load all messages.
+     * @param {Boolean} [searchOptions.fromMe] Return only messages from the bot number or vise versa. To get all messages, leave the option undefined.
+     * @returns {Promise<Array<Message>>}
+     */
+    async fetchMessages(searchOptions) {
+        let messages = await this.client.pupPage.evaluate(async (chatId, searchOptions) => {
+            const msgFilter = (m) => {
+                if (m.isNotification) {
+                    return false; // dont include notification messages
+                }
+                if (searchOptions && searchOptions.fromMe !== undefined && m.id.fromMe !== searchOptions.fromMe) {
+                    return false;
+                }
+                return true;
+            };
 
             const chat = await window.WWebJS.getChat(chatId, { getAsModel: false });
             let msgs = chat.msgs.getModelsArray().filter(msgFilter);

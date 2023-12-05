@@ -31,7 +31,7 @@ const NoAuth = require('./authStrategies/NoAuth');
  * @param {number} options.takeoverOnConflict - If another whatsapp web session is detected (another browser), take over the session in the current browser
  * @param {number} options.takeoverTimeoutMs - How much time to wait before taking over the session
  * @param {string} options.userAgent - User agent to use in puppeteer
- * @param {string} options.ffmpegPath - Ffmpeg path to use when formatting videos to webp while sending stickers
+ * @param {string} options.ffmpegPath - Ffmpeg path to use when formatting videos to webp while sending stickers 
  * @param {boolean} options.bypassCSP - Sets bypassing of page's Content-Security-Policy.
  * @param {object} options.proxyAuthentication - Proxy Authentication object.
  *
@@ -939,6 +939,42 @@ class Client extends EventEmitter {
      * Sends a channel admin invitation to a user, allowing them to become an admin of the channel
      * @param {string} chatId The ID of a user to send the channel admin invitation to
      * @param {string} channelId The ID of a channel for which the invitation is being sent
+     * @param {SendChannelAdminInvitationOptions} options 
+     * @returns {Promise<boolean>} Returns true if an invitation was sent successfully, false otherwise
+     */
+    async sendChannelAdminInvitation(chatId, channelId, options = {}) {
+        const response = await this.pupPage.evaluate(async (chatId, channelId, options) => {
+            const channelWid = window.Store.WidFactory.createWid(channelId);
+            const chatWid = window.Store.WidFactory.createWid(chatId);
+            const chat = await window.Store.Chat.find(chatWid);
+
+            if (!chatWid.isUser() || !window.Store.ChannelUtils.isNewsletterMultiAdminReceiverEnabled()) {
+                return false;
+            }
+            
+            return await window.Store.SendChannelMessage.sendNewsletterAdminInviteMessage(
+                chat,
+                {
+                    newsletterWid: window.Store.WidFactory.createWid(channelId),
+                    invitee: chatWid,
+                    inviteMessage: options.comment,
+                    base64Thumb: await window.WWebJS.getProfilePicThumbToBase64(channelWid)
+                }
+            );
+        }, chatId, channelId, options);
+
+        return response.messageSendResult === 'OK';
+    }
+
+    /**
+     * @typedef {Object} SendChannelAdminInvitationOptions
+     * @property {?string} comment The comment to be added to an invitation
+     */
+
+    /**
+     * Sends a channel admin invitation to a user, allowing them to become an admin of the channel
+     * @param {string} chatId The ID of a user to send the channel admin invitation to
+     * @param {string} channelId The ID of a channel for which the invitation is being sent
      * @param {SendChannelAdminInvitationOptions} options
      * @returns {Promise<boolean>} Returns true if an invitation was sent successfully, false otherwise
      */
@@ -1037,7 +1073,7 @@ class Client extends EventEmitter {
 
     /**
      * Gets a {@link Channel} object or a {@link ChannelMetadata} by its ID
-     * @param {string} channelId
+     * @param {string} channelId 
      * @param {GetChannelOptions} options
      * @returns {Promise<ChannelMetadata|Channel>}
      */
@@ -1579,7 +1615,7 @@ class Client extends EventEmitter {
     /**
      * Creates a new channel
      * @param {string} title The channel name
-     * @param {CreateChannelOptions} options
+     * @param {CreateChannelOptions} options 
      * @returns {Promise<CreateChannelResult|string>} Returns an object that handles the result for the channel creation or an error message as a string
      */
     async createChannel(title, options = {}) {

@@ -23,7 +23,6 @@ exports.ExposeStore = (moduleRaidStr) => {
     window.Store.MediaTypes = window.mR.findModule('msgToMediaType')[0];
     window.Store.MediaUpload = window.mR.findModule('uploadMedia')[0];
     window.Store.MsgKey = window.mR.findModule((module) => module.default && module.default.fromString)[0].default;
-    window.Store.MessageInfo = window.mR.findModule('sendQueryMsgInfo')[0];
     window.Store.OpaqueData = window.mR.findModule(module => module.default && module.default.createFromData)[0].default;
     window.Store.QueryProduct = window.mR.findModule('queryProduct')[0];
     window.Store.QueryOrder = window.mR.findModule('queryOrder')[0];
@@ -35,7 +34,6 @@ exports.ExposeStore = (moduleRaidStr) => {
     window.Store.User = window.mR.findModule('getMaybeMeUser')[0];
     window.Store.ContactMethods = window.mR.findModule('getUserid')[0];
     window.Store.BusinessProfileCollection = window.mR.findModule('BusinessProfileCollection')[0].BusinessProfileCollection;
-    window.Store.UploadUtils = window.mR.findModule((module) => (module.default && module.default.encryptAndUpload) ? module.default : null)[0].default;
     window.Store.UserConstructor = window.mR.findModule((module) => (module.default && module.default.prototype && module.default.prototype.isServer && module.default.prototype.isUser) ? module.default : null)[0].default;
     window.Store.Validators = window.mR.findModule('findLinks')[0];
     window.Store.VCard = window.mR.findModule('vcardFromContactModel')[0];
@@ -441,7 +439,6 @@ exports.LoadUtils = () => {
             });
         const mediaData = await mediaPrep.waitForPrep();
         const mediaObject = window.Store.MediaObject.getOrCreateMediaObject(mediaData.filehash);
-
         const mediaType = window.Store.MediaTypes.msgToMediaType({
             type: mediaData.type,
             isGif: mediaData.isGif
@@ -526,45 +523,6 @@ exports.LoadUtils = () => {
         return msg;
     };
 
-    window.WWebJS.getPollVoteModel = (vote) => {
-        const _vote = vote.serialize();
-        if (vote.parentMsgKey) {
-            const msg = window.Store.Msg.get(vote.parentMsgKey);
-            msg && (_vote.parentMessage = window.WWebJS.getMessageModel(msg));
-            return _vote;
-        }
-        return null;
-    };
-
-    window.WWebJS.getChatModel = async chat => {
-
-        let res = chat.serialize();
-        res.isGroup = chat.isGroup;
-        res.formattedTitle = chat.formattedTitle;
-        res.isMuted = chat.mute && chat.mute.isMuted;
-
-        if (chat.groupMetadata) {
-            const chatWid = window.Store.WidFactory.createWid((chat.id._serialized));
-            await window.Store.GroupMetadata.update(chatWid);
-            res.groupMetadata = chat.groupMetadata.serialize();
-        }
-
-        res.lastMessage = null;
-        if (res.msgs && res.msgs.length) {
-            const lastMessage = chat.lastReceivedKey ? window.Store.Msg.get(chat.lastReceivedKey._serialized) : null;
-            if (lastMessage) {
-                res.lastMessage = window.WWebJS.getMessageModel(lastMessage);
-            }
-        }
-
-        delete res.msgs;
-        delete res.msgUnsyncedButtonReplyMsgs;
-        delete res.unsyncedButtonReplies;
-
-        return res;
-    };
-
-
     window.WWebJS.getChat = async (chatId, { getAsModel = true } = {}) => {
         const isChannel = chatId.match(/@(.+)/)[1] === 'newsletter';
         let chat;
@@ -646,12 +604,6 @@ exports.LoadUtils = () => {
             isMuted: response.newsletterMutedMetadataMixin ? response.newsletterMutedMetadataMixin.mutedState === 'on' : null,
             isVerified: response.newsletterVerificationMetadataMixin.verificationState === 'verified'
         };
-    };
-
-    window.WWebJS.getChat = async chatId => {
-        const chatWid = window.Store.WidFactory.createWid(chatId);
-        const chat = await window.Store.Chat.find(chatWid);
-        return await window.WWebJS.getChatModel(chat);
     };
 
     window.WWebJS.getChats = async () => {
