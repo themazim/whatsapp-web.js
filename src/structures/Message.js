@@ -414,7 +414,7 @@ class Message extends Base {
 
         await this.client.pupPage.evaluate(async (msgId, chatId) => {
             let msg = window.Store.Msg.get(msgId);
-            let chat = window.Store.Chat.get(chatId);
+            let chat = await window.WWebJS.getChat(chatId, { getAsModel: false });
 
             return await chat.forwardMessages([msg]);
         }, this.id._serialized, chatId);
@@ -534,15 +534,20 @@ class Message extends Base {
      */
 
     /**
-     * Get information about message delivery status. May return null if the message does not exist or is not sent by you.
+     * Get information about message delivery status.
+     * May return null if the message does not exist or is not sent by you.
      * @returns {Promise<?MessageInfo>}
      */
     async getInfo() {
         const info = await this.client.pupPage.evaluate(async (msgId) => {
             const msg = window.Store.Msg.get(msgId);
-            if (!msg) return null;
+            if (!msg || !msg.id.fromMe) return null;
 
-            return await window.Store.MessageInfo.sendQueryMsgInfo(msg.id);
+            return new Promise((resolve) => {
+                setTimeout(async () => {
+                    resolve(await window.Store.getMsgInfo(msg.id));
+                }, (Date.now() - msg.t * 1000 < 1250) && Math.floor(Math.random() * (1200 - 1100 + 1)) + 1100 || 0);
+            });
         }, this.id._serialized);
 
         return info;
