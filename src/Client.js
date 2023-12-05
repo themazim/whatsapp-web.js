@@ -31,7 +31,7 @@ const NoAuth = require('./authStrategies/NoAuth');
  * @param {number} options.takeoverOnConflict - If another whatsapp web session is detected (another browser), take over the session in the current browser
  * @param {number} options.takeoverTimeoutMs - How much time to wait before taking over the session
  * @param {string} options.userAgent - User agent to use in puppeteer
- * @param {string} options.ffmpegPath - Ffmpeg path to use when formating videos to webp while sending stickers 
+ * @param {string} options.ffmpegPath - Ffmpeg path to use when formatting videos to webp while sending stickers 
  * @param {boolean} options.bypassCSP - Sets bypassing of page's Content-Security-Policy.
  * @param {object} options.proxyAuthentication - Proxy Authentication object.
  * 
@@ -683,8 +683,8 @@ class Client extends EventEmitter {
             window.Store.AppState.on('change:state', (_AppState, state) => { window.onAppStateChangedEvent(state); });
             window.Store.Conn.on('change:battery', (state) => { window.onBatteryStateChangedEvent(state); });
             window.Store.Call.on('add', (call) => { window.onIncomingCall(call); });
-            window.Store.Chat.on('remove', async (chat) => { window.onRemoveChatEvent(await window.WWebJS.getChatOrChannelModel(chat)); });
-            window.Store.Chat.on('change:archive', async (chat, currState, prevState) => { window.onArchiveChatEvent(await window.WWebJS.getChatOrChannelModel(chat), currState, prevState); });
+            window.Store.Chat.on('remove', async (chat) => { window.onRemoveChatEvent(await window.WWebJS.getChatModel(chat)); });
+            window.Store.Chat.on('change:archive', async (chat, currState, prevState) => { window.onArchiveChatEvent(await window.WWebJS.getChatModel(chat), currState, prevState); });
             window.Store.Msg.on('add', (msg) => { 
                 if (msg.isNewMsg) {
                     if(msg.type === 'ciphertext') {
@@ -848,17 +848,17 @@ class Client extends EventEmitter {
         let isChannel = chatOrChannelId.match(/@(.+)/)[1] === 'newsletter';
 
         if (isChannel && [
-            options.sendAudioAsVoice, options.sendVideoAsGif, options.sendMediaAsSticker,
-            options.sendMediaAsDocument, options.quotedMessageId, options.parseVCards,
+            options.sendAudioAsVoice, options.sendMediaAsDocument,
+            options.quotedMessageId, options.parseVCards,
             options.isViewOnce, content instanceof Location, content instanceof Poll, content instanceof Contact,
             Array.isArray(content) && content.length > 0 && content[0] instanceof Contact
         ].includes(true)) {
-            console.warn('The message type is currently not supported for sending in channels,\nthe supported message types are: text, video, or image.\nTo stay updated on new supported message formats, check the https://github.com/pedroslopez/whatsapp-web.js/pull/2620.');
+            console.warn('The message type is currently not supported for sending in channels,\nthe supported message types are: text, image, sticker, gif or video.\nTo stay updated on supported message types to send in channels, see https://github.com/pedroslopez/whatsapp-web.js/pull/2620');
             return null;
         }
     
         if (options.mentions && options.mentions.some(possiblyContact => possiblyContact instanceof Contact)) {
-            console.warn('Mentions with an array of Contact are now deprecated. See more at https://github.com/pedroslopez/whatsapp-web.js/pull/2166.');
+            console.warn('Mentions with an array of Contact are now deprecated. See more at https://github.com/pedroslopez/whatsapp-web.js/pull/2166');
             options.mentions = options.mentions.map(a => a.id._serialized);
         }
 
@@ -870,19 +870,19 @@ class Client extends EventEmitter {
             sendMediaAsDocument: options.sendMediaAsDocument,
             caption: options.caption,
             quotedMessageId: options.quotedMessageId,
-            parseVCards: options.parseVCards === false ? false : true,
+            parseVCards: options.parseVCards,
             mentionedJidList: Array.isArray(options.mentions) ? options.mentions : [],
             extraOptions: options.extra
         };
 
-        const sendSeen = typeof options.sendSeen === 'undefined' ? true : options.sendSeen;
+        const sendSeen = options.sendSeen !== false;
 
         if (content instanceof MessageMedia) {
-            internalOptions.attachment = content;
+            internalOptions.media = content;
             internalOptions.isViewOnce = options.isViewOnce,
             content = '';
         } else if (options.media instanceof MessageMedia) {
-            internalOptions.attachment = options.media;
+            internalOptions.media = options.media;
             internalOptions.caption = content;
             internalOptions.isViewOnce = options.isViewOnce,
             content = '';
@@ -900,9 +900,9 @@ class Client extends EventEmitter {
             content = '';
         }
 
-        if (internalOptions.sendMediaAsSticker && internalOptions.attachment) {
-            internalOptions.attachment = await Util.formatToWebpSticker(
-                internalOptions.attachment, {
+        if (internalOptions.sendMediaAsSticker && internalOptions.media) {
+            internalOptions.media = await Util.formatToWebpSticker(
+                internalOptions.media, {
                     name: options.stickerName,
                     author: options.stickerAuthor,
                     categories: options.stickerCategories
@@ -910,22 +910,60 @@ class Client extends EventEmitter {
             );
         }
 
-        const newMessage = await this.pupPage.evaluate(async (chatOrChannelId, message, options, sendSeen, isChannel) => {
-            const chatOrChannel = await window.WWebJS.getChatOrChannel(chatOrChannelId, { getAsModel: false });
+        const sentMsg = await this.pupPage.evaluate(async (chatOrChannelId, content, options, sendSeen) => {
+            const chatOrChannel = await window.WWebJS.getChat(chatOrChannelId, { getAsModel: false });
 
             if (!chatOrChannel) return null;
 
-            if (sendSeen && !isChannel) {
+            if (sendSeen) {
                 await window.WWebJS.sendSeen(chatOrChannelId);
             }
 
-            const msg = await window.WWebJS.sendMessage(chatOrChannel, message, options);
-            return msg.serialize();
-        }, chatOrChannelId, content, internalOptions, sendSeen, isChannel);
+            const msg = await window.WWebJS.sendMessage(chatOrChannel, content, options);
+            return msg
+                ? msg.serialize()
+                : msg;
+        }, chatOrChannelId, content, internalOptions, sendSeen);
 
-        return newMessage
-            ? new Message(this, newMessage)
-            : newMessage;
+        return sentMsg
+            ? new Message(this, sentMsg)
+            : sentMsg;
+    }
+
+    /**
+     * @typedef {Object} SendChannelAdminInvitationOptions
+     * @property {?string} comment The comment to be added to an invitation
+     */
+
+    /**
+     * Sends a channel admin invitation to a user, allowing them to become an admin of the channel
+     * @param {string} chatId The ID of a user to send the channel admin invitation to
+     * @param {string} channelId The ID of a channel for which the invitation is being sent
+     * @param {SendChannelAdminInvitationOptions} options 
+     * @returns {Promise<boolean>} Returns true if an invitation was sent successfully, false otherwise
+     */
+    async sendChannelAdminInvitation(chatId, channelId, options = {}) {
+        const response = await this.pupPage.evaluate(async (chatId, channelId, options) => {
+            const channelWid = window.Store.WidFactory.createWid(channelId);
+            const chatWid = window.Store.WidFactory.createWid(chatId);
+            const chat = await window.Store.Chat.find(chatWid);
+
+            if (!chatWid.isUser() || !window.Store.ChannelUtils.isNewsletterMultiAdminReceiverEnabled()) {
+                return false;
+            }
+            
+            return await window.Store.SendChannelMessage.sendNewsletterAdminInviteMessage(
+                chat,
+                {
+                    newsletterWid: window.Store.WidFactory.createWid(channelId),
+                    invitee: chatWid,
+                    inviteMessage: options.comment,
+                    base64Thumb: await window.WWebJS.getProfilePicThumbToBase64(channelWid)
+                }
+            );
+        }, chatId, channelId, options);
+
+        return response.messageSendResult === 'OK';
     }
     
     /**
@@ -965,7 +1003,7 @@ class Client extends EventEmitter {
      */
     async getChatById(chatId) {
         let chat = await this.pupPage.evaluate(async chatId => {
-            return await window.WWebJS.getChatOrChannel(chatId);
+            return await window.WWebJS.getChat(chatId);
         }, chatId);
 
         return chat
@@ -974,27 +1012,75 @@ class Client extends EventEmitter {
     }
 
     /**
-     * Gets channel instance by ID
-     * @param {string} channelId 
-     * @returns {Promise<Channel>}
+     * @typedef {Object} GetChannelOptions
+     * @property {boolean} [getMetadata = false] If true, gets the {@link ChannelMetadata}, false by default
      */
-    async getChannelById(channelId) {
-        const channel = await this.pupPage.evaluate(async (channelId) => {
-            return await window.WWebJS.getChatOrChannel(channelId);
-        }, channelId);
 
-        return channel
-            ? ChatFactory.create(this, channel)
-            : channel;
+    /**
+     * @typedef {Object} ChannelMetadata
+     * @property {string} id The channel ID in a format: 'XXXXXXXXXX@newsletter'
+     * @property {number} createdAtTs The timestamp the channel was created at
+     * @property {Object} titleMetadata
+     * @property {string} titleMetadata.title The channel title
+     * @property {number} titleMetadata.updatedAtTs The timestamp the title was updated at
+     * @property {Object} descriptionMetadata
+     * @property {string} descriptionMetadata.description The channel description
+     * @property {string} descriptionMetadata.updatedAtTs The timestamp the description was updated at
+     * @property {string} inviteLink The channel invite link in a format: https://whatsapp.com/channel/INVITE_CODE
+     * @property {string} membershipType The membership type of a current user in a channel (guest/subscriber/admin/owner)
+     * @property {string} stateType The channel state type (active/suspended/geosuspended)
+     * @property {string} pictureUrl The channel profile picture url if set
+     * @property {number} subscribersCount The number of channel subscribers
+     * @property {boolean} isMuted Indicates if a channel is muted
+     * @property {boolean} isVerified Indicates if a channel is verified
+     */
+
+    /**
+     * Gets a {@link Channel} object or a {@link ChannelMetadata} by its ID
+     * @param {string} channelId 
+     * @param {GetChannelOptions} options
+     * @returns {Promise<ChannelMetadata|Channel>}
+     */
+    async getChannelById(channelId, options = {}) {
+        const result = await this.pupPage.evaluate(async (channelId, options) => {
+            if (options.getMetadata) {
+                try {
+                    return await window.WWebJS.getChannelMetadata(channelId, { getById: true });
+                } catch (err) {
+                    if (err.name === 'ServerStatusCodeError') return null;
+                    throw err;
+                }
+            }
+            return await window.WWebJS.getChat(channelId);
+        }, channelId, options);
+
+        return result ? (options.getMetadata ? result : ChatFactory.create(this, result)) : result;
     }
 
     /**
-     * Gets all channel instances as follows:
-     * 
-     * 1. Channels the current user is subscribed to
-     * 2. Channels the current user was subscribed to
-     * and from which was unsubscribed with the 'deleteLocalModels' set to 'false'
-     * 3. Channels the current user created
+     * Gets a {@link Channel} object or a {@link ChannelMetadata} by invite code
+     * @param {string} inviteCode The code that comes after the 'https://whatsapp.com/channel/'
+     * @param {GetChannelOptions} options
+     * @returns {Promise<ChannelMetadata|Channel>}
+     */
+    async getChannelByInviteCode(inviteCode, options = {}) {
+        const result = await this.pupPage.evaluate(async (inviteCode, options) => {
+            let channelMetadata;
+            try {
+                channelMetadata = await window.WWebJS.getChannelMetadata(inviteCode, { getByInviteCode: true });
+                if (options.getMetadata) return channelMetadata;
+            } catch (err) {
+                if (err.name === 'ServerStatusCodeError') return null;
+                throw err;
+            }
+            return await window.WWebJS.getChat(channelMetadata.id);
+        }, inviteCode, options);
+
+        return result ? (options.getMetadata ? result : ChatFactory.create(this, result)) : result;
+    }
+
+    /**
+     * Gets all cached {@link Channel} objects
      * @returns {Promise<Array<Channel>>}
      */
     async getChannels() {
@@ -1154,7 +1240,7 @@ class Client extends EventEmitter {
      */
     async archiveChat(chatId) {
         return await this.pupPage.evaluate(async chatId => {
-            let chat = await window.WWebJS.getChatOrChannel(chatId, { getAsModel: false });
+            let chat = await window.WWebJS.getChat(chatId, { getAsModel: false });
             await window.Store.Cmd.archiveChat(chat, true);
             return true;
         }, chatId);
@@ -1166,7 +1252,7 @@ class Client extends EventEmitter {
      */
     async unarchiveChat(chatId) {
         return await this.pupPage.evaluate(async chatId => {
-            let chat = await window.WWebJS.getChatOrChannel(chatId, { getAsModel: false });
+            let chat = await window.WWebJS.getChat(chatId, { getAsModel: false });
             await window.Store.Cmd.archiveChat(chat, false);
             return false;
         }, chatId);
@@ -1178,7 +1264,7 @@ class Client extends EventEmitter {
      */
     async pinChat(chatId) {
         return this.pupPage.evaluate(async chatId => {
-            let chat = await window.WWebJS.getChatOrChannel(chatId, { getAsModel: false });
+            let chat = await window.WWebJS.getChat(chatId, { getAsModel: false });
             if (chat.pin) {
                 return true;
             }
@@ -1201,7 +1287,7 @@ class Client extends EventEmitter {
      */
     async unpinChat(chatId) {
         return this.pupPage.evaluate(async chatId => {
-            let chat = await window.WWebJS.getChatOrChannel(chatId, { getAsModel: false });
+            let chat = await window.WWebJS.getChat(chatId, { getAsModel: false });
             if (!chat.pin) {
                 return false;
             }
@@ -1218,7 +1304,7 @@ class Client extends EventEmitter {
     async muteChat(chatId, unmuteDate) {
         unmuteDate = unmuteDate ? unmuteDate.getTime() / 1000 : -1;
         await this.pupPage.evaluate(async (chatId, timestamp) => {
-            let chat = await window.WWebJS.getChatOrChannel(chatId, { getAsModel: false });
+            let chat = await window.WWebJS.getChat(chatId, { getAsModel: false });
             await chat.mute.mute({expiration: timestamp, sendDevice:!0});
         }, chatId, unmuteDate || -1);
     }
@@ -1229,7 +1315,7 @@ class Client extends EventEmitter {
      */
     async unmuteChat(chatId) {
         await this.pupPage.evaluate(async chatId => {
-            let chat = await window.WWebJS.getChatOrChannel(chatId, { getAsModel: false });
+            let chat = await window.WWebJS.getChat(chatId, { getAsModel: false });
             await window.Store.Cmd.muteChat(chat, false);
         }, chatId);
     }
@@ -1240,7 +1326,7 @@ class Client extends EventEmitter {
      */
     async markChatUnread(chatId) {
         await this.pupPage.evaluate(async chatId => {
-            let chat = await window.WWebJS.getChatOrChannel(chatId, { getAsModel: false });
+            let chat = await window.WWebJS.getChat(chatId, { getAsModel: false });
             await window.Store.Cmd.markChatUnread(chat, true);
         }, chatId);
     }
@@ -1494,11 +1580,15 @@ class Client extends EventEmitter {
      * Creates a new channel
      * @param {string} title The channel name
      * @param {CreateChannelOptions} options 
-     * @returns {Promise<CreateChannelResult|{}>} Returns an object that handles the result for the channel creation or an empty object in a case of an error
+     * @returns {Promise<CreateChannelResult|string>} Returns an object that handles the result for the channel creation or an error message as a string
      */
     async createChannel(title, options = {}) {
         return await this.pupPage.evaluate(async (title, options) => {
             let response, { description = null, picture = null } = options;
+
+            if (!window.Store.ChannelUtils.isNewsletterCreationEnabled()) {
+                return 'CreateChannelError: A channel creation is not enabled';
+            }
 
             if (picture) {
                 picture = await window.WWebJS.cropAndResizeImage(picture, {
@@ -1516,7 +1606,9 @@ class Client extends EventEmitter {
                     picture: picture,
                 });
             } catch (err) {
-                if (err.name === 'ServerStatusCodeError') return {};
+                if (err.name === 'ServerStatusCodeError') {
+                    return 'CreateChannelError: An error occupied while creating a channel';
+                }
                 throw err;
             }
 
@@ -1543,7 +1635,7 @@ class Client extends EventEmitter {
     /**
      * Options for unsubscribe from a channel
      * @typedef {Object} UnsubscribeOptions
-     * @property {boolean} [deleteLocalModels = false] If true, after an unsubscription, it will completely remove a channel and its data from your local env making it seem like you have never been subscribed to it. Otherwise it will remove a channel from your channel list and set your membership type for that channel to GUEST
+     * @property {boolean} [deleteLocalModels = false] If true, after an unsubscription, it will completely remove a channel from the channel collection making it seem like the current user have never interacted with it. Otherwise it will only remove a channel from the list of channels the current user is subscribed to and will set the membership type for that channel to GUEST
      */
 
     /**
@@ -1577,20 +1669,20 @@ class Client extends EventEmitter {
      */
     async searchChannels(searchOptions = {}) {
         return await this.pupPage.evaluate(async (searchOptions) => {
-            const region = window.Store.ChannelUtils.region;
+            const currentRegion = window.Store.ChannelUtils.currentRegion;
             let {
                 searchText = '',
                 sortOptions = {
                     field: Channel.SortField.SUBSCRIBERS,
                     order: Channel.SortOrder.DESCENDING,
                 },
-                countryCodes = [region],
+                countryCodes = [currentRegion],
                 viewType = Channel.ViewType.RECOMMENDED,
                 limit = 50
             } = searchOptions;
 
             searchText = searchText.trim();
-            countryCodes = countryCodes.length === 1 && countryCodes[0] === region
+            countryCodes = countryCodes.length === 1 && countryCodes[0] === currentRegion
                 ? countryCodes
                 : countryCodes.filter(code => Object.keys(window.Store.ChannelUtils.countryCodesIso).includes(code));
             limit !== 50 && window.injectToFunction({ module: 'getNewsletterDirectoryPageSize', index: 0, function: 'getNewsletterDirectoryPageSize' }, () => limit);
@@ -1606,7 +1698,7 @@ class Client extends EventEmitter {
             const channels = (await window.Store.ChannelUtils.fetchNewsletterDirectories(searchOptions)).newsletters;
             limit !== 50 && window.injectToFunction({ module: 'getNewsletterDirectoryPageSize', index: 0, function: 'getNewsletterDirectoryPageSize' }, (func, ...args) => func(args));
             return channels
-                ? await Promise.all(channels.map((channel) => window.WWebJS.getChatOrChannelModel(channel, { isChannel: true })))
+                ? await Promise.all(channels.map((channel) => window.WWebJS.getChatModel(channel, { isChannel: true })))
                 : [];
         }, searchOptions);
     }
