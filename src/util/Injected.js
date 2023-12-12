@@ -96,7 +96,7 @@ exports.ExposeStore = (moduleRaidStr) => {
         ...window.mR.findModule('sendMembershipRequestsActionRPC')[0]
     };
     window.Store.ChannelUtils = {
-        ...window.mR.findModule('queryAndUpdateNewsletterMetadataAction')[0],
+        ...window.mR.findModule('loadNewsletterPreviewChat')[0],
         ...window.mR.findModule('queryNewsletterMetadataByInviteCode')[0],
         ...window.mR.findModule('createNewsletterQuery')[0],
         ...window.mR.findModule('editNewsletterMetadataAction')[0],
@@ -108,6 +108,9 @@ exports.ExposeStore = (moduleRaidStr) => {
         ...window.mR.findModule('unmuteNewsletter')[0],
         ...window.mR.findModule('isNewsletterCreationEnabled')[0],
         ...window.mR.findModule('getRoleByIdentifier')[0],
+        ...window.mR.findModule('acceptNewsletterAdminInvite')[0],
+        ...window.mR.findModule('revokeNewsletterAdminInvite')[0],
+        ...window.mR.findModule('demoteNewsletterAdmin')[0],
         countryCodesIso: window.mR.findModule(m => m.default && m.default.US === 'United States')[0].default,
         currentRegion: window.mR.findModule(m => m.default && m.default.getRegion)[0].default.getRegion(),
     };
@@ -528,24 +531,11 @@ exports.LoadUtils = () => {
         let chat;
 
         if (isChannel) {
-            const fields = {
-                'name': true,
-                'picture': true,
-                'description': true,
-                'inviteLink': true,
-                'handle': true,
-                'subscribers': true,
-                'privacy': true,
-                'verification': true,
-                'state': true,
-                'muted': true,
-                'membership': true
-            };
-            chat = window.Store.NewsletterCollection.get(chatId) ??
-                await window.Store.ChannelUtils.queryAndUpdateNewsletterMetadataAction(
-                    chatId,
-                    { fields: fields }
-                );
+            chat = window.Store.NewsletterCollection.get(chatId);
+            if (!chat) {
+                await window.Store.ChannelUtils.loadNewsletterPreviewChat(chatId);
+                chat = await window.Store.NewsletterCollection.find(window.Store.WidFactory.createWid(chatId));
+            }
         } else {
             const chatWid = window.Store.WidFactory.createWid(chatId);
             chat = window.Store.Chat.get(chatWid) ?? await window.Store.Chat.find(chatWid);
@@ -569,7 +559,8 @@ exports.LoadUtils = () => {
                 'subscribers': true,
                 'privacy': true,
                 'verification': true,
-                'state': true
+                'state': true,
+                'creationTime': true
             };
             response = await window.Store.ChannelUtils.queryNewsletterMetadataByJid(
                 idOrInviteCode,
@@ -597,11 +588,10 @@ exports.LoadUtils = () => {
                 updatedAtTs: response.newsletterDescriptionMetadataMixin.descriptionQueryDescriptionResponseMixin.updateTime
             },
             inviteLink: `https://whatsapp.com/channel/${response.newsletterInviteLinkMetadataMixin.inviteCode}`,
-            membershipType: response.newsletterMembershipMetadataMixin ? response.newsletterMembershipMetadataMixin.membershipType : null,
+            membershipType: window.Store.ChannelUtils.getRoleByIdentifier(idOrInviteCode) ?? 'viewer',
             stateType: response.newsletterStateMetadataMixin.stateType,
             pictureUrl: picUrl ? `https://pps.whatsapp.net${picUrl}` : null,
             subscribersCount: response.newsletterSubscribersMetadataMixin.subscribersCount,
-            isMuted: response.newsletterMutedMetadataMixin ? response.newsletterMutedMetadataMixin.mutedState === 'on' : null,
             isVerified: response.newsletterVerificationMetadataMixin.verificationState === 'verified'
         };
     };
@@ -1177,7 +1167,7 @@ exports.LoadUtils = () => {
     window.WWebJS.subscribeToUnsubscribeFromChannel = async (channelId, action, options = {}) => {
         const channel = await window.WWebJS.getChat(channelId, { getAsModel: false });
 
-        if (!channel || ['owner', 'admin'].includes(channel.newsletterMetadata.membershipType)) return false;
+        if (!channel || channel.newsletterMetadata.membershipType === 'owner') return false;
         options = { eventSurface: 3, deleteLocalModels: options.deleteLocalModels || false };
 
         try {
