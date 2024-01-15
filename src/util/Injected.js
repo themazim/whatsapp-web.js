@@ -59,6 +59,7 @@ exports.ExposeStore = (moduleRaidStr) => {
     window.Store.WidToJid = window.mR.findModule('widToUserJid')[0];
     window.Store.JidToWid = window.mR.findModule('userJidToUserWid')[0];
     window.Store.getMsgInfo = (window.mR.findModule('sendQueryMsgInfo')[0] || {}).sendQueryMsgInfo || window.mR.findModule('queryMsgInfo')[0].queryMsgInfo;
+    window.Store.pinUnpinMsg = window.mR.findModule('sendPinInChatMsg')[0].sendPinInChatMsg;
     
     /* eslint-disable no-undef, no-cond-assign */
     window.Store.QueryExist = ((m = window.mR.findModule('queryExists')[0]) ? m.queryExists : window.mR.findModule('queryExist')[0].queryWidExists);
@@ -185,8 +186,8 @@ exports.LoadUtils = () => {
 
     };
 
-    window.WWebJS.sendMessage = async (chatOrChannel, content, options = {}) => {
-        const isChannel = chatOrChannel.isNewsletter;
+    window.WWebJS.sendMessage = async (chat, content, options = {}) => {
+        const isChannel = chat.isNewsletter;
 
         let mediaOptions = {};
         if (options.media) {
@@ -208,12 +209,27 @@ exports.LoadUtils = () => {
         let quotedMsgOptions = {};
         if (options.quotedMessageId) {
             let quotedMessage = window.Store.Msg.get(options.quotedMessageId);
-            quotedMessage && (quotedMsgOptions = quotedMessage.msgContextInfo(chatOrChannel));
+            quotedMessage && (quotedMsgOptions = quotedMessage.msgContextInfo(chat));
             delete options.quotedMessageId;
         }
 
         if (options.mentionedJidList) {
-            options.mentionedJidList = options.mentionedJidList.map(cId => window.Store.Contact.get(cId).id);
+            options.mentionedJidList = await Promise.all(
+                options.mentionedJidList.map(async (id) => {
+                    const wid = window.Store.WidFactory.createWid(id);
+                    if (await window.Store.QueryExist(wid)) {
+                        return wid;
+                    }
+                })
+            );
+            options.mentionedJidList = options.mentionedJidList.filter(Boolean);
+        }
+
+        if (options.groupMentions) {
+            options.groupMentions = options.groupMentions.map((e) => ({
+                groupSubject: e.subject,
+                groupJid: window.Store.WidFactory.createWid(e.id)
+            }));
         }
 
         let locationOptions = {};
@@ -295,21 +311,61 @@ exports.LoadUtils = () => {
             }
         }
 
+        let buttonOptions = {};
+        if (options.buttons) {
+            let caption;
+            if (options.buttons.type === 'chat') {
+                content = options.buttons.body;
+                caption = content;
+            } else {
+                caption = options.caption ? options.caption : ' '; //Caption can't be empty
+            }
+            buttonOptions = {
+                productHeaderImageRejected: false,
+                isFromTemplate: false,
+                isDynamicReplyButtonsMsg: true,
+                title: options.buttons.title ? options.buttons.title : undefined,
+                footer: options.buttons.footer ? options.buttons.footer : undefined,
+                dynamicReplyButtons: options.buttons.buttons,
+                replyButtons: options.buttons.buttons,
+                caption: caption
+            };
+            delete options.buttons;
+        }
+
+        let listOptions = {};
+        if (options.list) {
+            if (window.Store.Conn.platform === 'smba' || window.Store.Conn.platform === 'smbi') {
+                throw '[LT01] Whatsapp business can\'t send this yet';
+            }
+            listOptions = {
+                type: 'list',
+                footer: options.list.footer,
+                list: {
+                    ...options.list,
+                    listType: 1
+                },
+                body: options.list.description
+            };
+            delete options.list;
+            delete listOptions.list.footer;
+        }
+
         const lidUser = window.Store.User.getMaybeMeLidUser();
         const meUser = window.Store.User.getMaybeMeUser();
         const isMD = window.Store.MDBackend;
         const newId = await window.Store.MsgKey.newId();
-        let from = chatOrChannel.id.isLid() ? lidUser : meUser;
+        let from = chat.id.isLid() ? lidUser : meUser;
         let participant;
 
-        if (chatOrChannel.isGroup) {
-            from = chatOrChannel.groupMetadata && chatOrChannel.groupMetadata.isLidAddressingMode ? lidUser : meUser;
+        if (chat.isGroup) {
+            from = chat.groupMetadata && chat.groupMetadata.isLidAddressingMode ? lidUser : meUser;
             participant = window.Store.WidFactory.toUserWid(from);
         }
 
         const newMsgKey = new window.Store.MsgKey({
             from: from,
-            to: chatOrChannel.id,
+            to: chat.id,
             id: newId,
             participant: isMD && participant,
             selfDir: 'out'
@@ -318,7 +374,7 @@ exports.LoadUtils = () => {
         const extraOptions = options.extraOptions || {};
         delete options.extraOptions;
 
-        const ephemeralFields = window.Store.EphemeralFields.getEphemeralFields(chatOrChannel);
+        const ephemeralFields = window.Store.EphemeralFields.getEphemeralFields(chat);
 
         const message = {
             ...options,
@@ -326,7 +382,7 @@ exports.LoadUtils = () => {
             ack: 0,
             body: content,
             from: meUser,
-            to: chatOrChannel.id,
+            to: chat.id,
             local: true,
             self: 'out',
             t: parseInt(new Date().getTime() / 1000),
@@ -339,6 +395,8 @@ exports.LoadUtils = () => {
             ...locationOptions,
             ..._pollOptions,
             ...vcardOptions,
+            ...buttonOptions,
+            ...listOptions,
             ...extraOptions
         };
 
@@ -347,13 +405,13 @@ exports.LoadUtils = () => {
             const msgDataFromMsgModel = window.Store.SendChannelMessage.msgDataFromMsgModel(msg);
             const isMedia = Object.keys(mediaOptions).length > 0;
             await window.Store.SendChannelMessage.addNewsletterMsgsRecords([msgDataFromMsgModel]);
-            chatOrChannel.msgs.add(msg);
-            chatOrChannel.t = msg.t;
+            chat.msgs.add(msg);
+            chat.t = msg.t;
 
             const sendChannelMsgResponse = await window.Store.SendChannelMessage.sendNewsletterMessageJob({
                 msgData: message,
                 type: message.type === 'chat' ? 'text' : isMedia ? 'media' : message.type,
-                newsletterJid: chatOrChannel.id.toJid(),
+                newsletterJid: chat.id.toJid(),
                 ...(isMedia ? { mediaMetadata: msg.avParams() } : {})
             });
 
@@ -366,7 +424,7 @@ exports.LoadUtils = () => {
             return msg;
         }
 
-        await window.Store.SendMessage.addAndSendMsgToChat(chatOrChannel, message);
+        await window.Store.SendMessage.addAndSendMsgToChat(chat, message);
         return window.Store.Msg.get(newMsgKey._serialized);
     };
 	
@@ -376,7 +434,22 @@ exports.LoadUtils = () => {
         delete options.extraOptions;
         
         if (options.mentionedJidList) {
-            options.mentionedJidList = options.mentionedJidList.map(cId => window.Store.Contact.get(cId).id);
+            options.mentionedJidList = await Promise.all(
+                options.mentionedJidList.map(async (id) => {
+                    const wid = window.Store.WidFactory.createWid(id);
+                    if (await window.Store.QueryExist(wid)) {
+                        return wid;
+                    }
+                })
+            );
+            options.mentionedJidList = options.mentionedJidList.filter(Boolean);
+        }
+
+        if (options.groupMentions) {
+            options.groupMentions = options.groupMentions.map((e) => ({
+                groupSubject: e.subject,
+                groupJid: window.Store.WidFactory.createWid(e.id)
+            }));
         }
 
         if (options.linkPreview) {
@@ -434,7 +507,7 @@ exports.LoadUtils = () => {
         if (forceVoice && mediaData.type === 'ptt') {
             const waveform = mediaObject.contentInfo.waveform;
             mediaData.waveform =
-                waveform ?? await window.WWebJS.generateWaveform(file);
+                waveform || await window.WWebJS.generateWaveform(file);
         }
 
         if (!(mediaData.mediaBlob instanceof window.Store.OpaqueData)) {
@@ -486,7 +559,7 @@ exports.LoadUtils = () => {
 
         msg.isEphemeral = message.isEphemeral;
         msg.isStatusV3 = message.isStatusV3;
-        msg.links = (message.getRawLinks()).map(link => ({
+        msg.links = (window.Store.Validators.findLinks(message.mediaObject ? message.caption : message.body)).map((link) => ({
             link: link.href,
             isSuspicious: Boolean(link.suspiciousCharacters && link.suspiciousCharacters.size)
         }));
@@ -522,7 +595,7 @@ exports.LoadUtils = () => {
             }
         } else {
             const chatWid = window.Store.WidFactory.createWid(chatId);
-            chat = window.Store.Chat.get(chatWid) ?? await window.Store.Chat.find(chatWid);
+            chat = window.Store.Chat.get(chatWid) || await window.Store.Chat.find(chatWid);
         }
 
         return getAsModel && chat
@@ -572,7 +645,7 @@ exports.LoadUtils = () => {
                 updatedAtTs: response.newsletterDescriptionMetadataMixin.descriptionQueryDescriptionResponseMixin.updateTime
             },
             inviteLink: `https://whatsapp.com/channel/${response.newsletterInviteLinkMetadataMixin.inviteCode}`,
-            membershipType: window.Store.ChannelUtils.getRoleByIdentifier(idOrInviteCode) ?? 'viewer',
+            membershipType: window.Store.ChannelUtils.getRoleByIdentifier(idOrInviteCode) || 'viewer',
             stateType: response.newsletterStateMetadataMixin.stateType,
             pictureUrl: picUrl ? `https://pps.whatsapp.net${picUrl}` : null,
             subscribersCount: response.newsletterSubscribersMetadataMixin.subscribersCount,
@@ -1033,7 +1106,7 @@ exports.LoadUtils = () => {
         }
 
         if (rpcResult.name === 'AddParticipantsResponseSuccess') {
-            const code = resultArgs?.value.error ?? '200';
+            const code = resultArgs?.value.error || '200';
             data.name = resultArgs?.name;
             data.code = +code;
             data.inviteV4Code = resultArgs?.value.addRequestCode;
@@ -1165,5 +1238,13 @@ exports.LoadUtils = () => {
             if (err.name === 'ServerStatusCodeError') return false;
             throw err;
         }
+    };
+
+    window.WWebJS.pinUnpinMsgAction = async (msgId, action, duration) => {
+        const message = window.Store.Msg.get(msgId);
+        if (!message) return false;
+        const response = await window.Store.pinUnpinMsg(message, action, duration);
+        if (response.messageSendResult === 'OK') return true;
+        return false;
     };
 };
