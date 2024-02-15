@@ -772,12 +772,15 @@ class Client extends EventEmitter {
         } else {
             this.pupPage.on('response', async (res) => {
                 if(res.ok() && res.url() === WhatsWebURL) {
-                    try {
-                        await webCache.persist(await res.text());    
-                    } catch (error){
-                        console.log('Failed to request or store WebVersion:');
-                        console.log(error.message);
-                    }
+                    await webCache.persist(
+                        await res.text().catch(error => {
+                            console.log('Failed to request WebVersion:');
+                            console.log(JSON.stringify(error));
+                        })
+                    ).catch(error => {
+                        console.log('Failed to persist WebVersion:');
+                        console.log(JSON.stringify(error));
+                    });
                 }
             });
         }
