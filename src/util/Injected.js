@@ -289,7 +289,7 @@ exports.LoadUtils = () => {
                 if (parsed) {
                     vcardOptions = {
                         type: 'vcard',
-                        vcardFormattedName: window.Store.VCardParse.vcardGetNameFromParsed(parsed)
+                        vcardFormattedName: parsed.N[0].value.join(' ').trim()
                     };
                 }
             } catch (_) {
