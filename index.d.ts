@@ -583,6 +583,16 @@ declare namespace WAWebJS {
     }
 
     /**
+     * Remote-based authentication
+     */
+    export class SftpStore implements Store {
+        sessionExists: (options: { session: string }) => Promise<boolean> | boolean;
+        delete: (options: { session: string }) => Promise<any> | any;
+        save: (options: { session: string }) => Promise<any> | any;
+        extract: (options: { session: string, path: string }) => Promise<any> | any;
+    }
+
+    /**
      * Legacy session auth strategy
      * Not compatible with multi-device accounts.
      */
