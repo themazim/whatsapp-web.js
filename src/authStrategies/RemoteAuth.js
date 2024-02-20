@@ -43,26 +43,25 @@ class RemoteAuth extends BaseAuthStrategy {
         this.dataPath = path.resolve(dataPath || './.wwebjs_auth/');
         this.tempDir = `${this.dataPath}/wwebjs_temp_session_${this.clientId}`;
         this.requiredDirs = ['Default', 'IndexedDB', 'Local Storage']; /* => Required Files & Dirs in WWebJS to restore session */
+        const sessionDirName = this.clientId ? this.clientId : 'RemoteAuth';
+        this.userDataDir = path.join(this.dataPath, sessionDirName);
+        this.sessionName = sessionDirName;
     }
+    
 
     async beforeBrowserInitialized() {
         console.log('*** before Browser Init');
         const puppeteerOpts = this.client.options.puppeteer;
-        const sessionDirName = this.clientId ? this.clientId : 'RemoteAuth';
-        const dirPath = path.join(this.dataPath, sessionDirName);
 
-        if (puppeteerOpts.userDataDir && puppeteerOpts.userDataDir !== dirPath) {
+        if (puppeteerOpts.userDataDir && puppeteerOpts.userDataDir !== this.userDataDir ) {
             throw new Error('RemoteAuth is not compatible with a user-supplied userDataDir.');
         }
-
-        this.userDataDir = dirPath;
-        this.sessionName = sessionDirName;
 
         await this.extractRemoteSession();
 
         this.client.options.puppeteer = {
             ...puppeteerOpts,
-            userDataDir: dirPath
+            userDataDir: this.userDataDir
         };
     }
 
