@@ -208,7 +208,8 @@ class RemoteAuth extends BaseAuthStrategy {
         try {
             await fs.promises.access(path);
             return true;
-        } catch {
+        } catch(err) {
+            console.log('path check failed: ', err);
             return false;
         }
     }
