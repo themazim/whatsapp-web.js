@@ -30,13 +30,16 @@
   "homepage": "https://wwebjs.dev/",
   "dependencies": {
     "@pedroslopez/moduleraid": "^5.0.2",
+    "adm-zip": "^0.5.10",
     "fluent-ffmpeg": "2.1.2",
+    "fs-extra": "^11.2.0",
     "mime": "^3.0.0",
     "node-fetch": "^2.6.5",
     "node-webpmux": "^3.1.0",
     "puppeteer": "^13.0.0",
     "puppeteer-extra": "3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "ssh2-sftp-client": "^10.0.3"
   },
   "devDependencies": {
     "@types/node-fetch": "^2.5.12",
@@ -54,8 +57,6 @@
     "node": ">=12.0.0"
   },
   "optionalDependencies": {
-    "archiver": "^5.3.1",
-    "fs-extra": "^10.1.0",
-    "unzipper": "^0.10.11"
+    "archiver": "^5.3.1"
   }
 }
