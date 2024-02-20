@@ -67,14 +67,17 @@ class RemoteAuth extends BaseAuthStrategy {
     }
 
     async logout() {
+        console.log('*** logout');
         await this.disconnect();
     }
 
     async destroy() {
+        console.log('*** destroy');
         clearInterval(this.backupSync);
     }
 
     async disconnect() {
+        console.log('*** disconnect');
         await this.deleteRemoteSession();
 
         let pathExists = await this.isValidPath(this.userDataDir);
@@ -88,6 +91,7 @@ class RemoteAuth extends BaseAuthStrategy {
     }
 
     async afterAuthReady() {
+        console.log('*** after auth ready');
         const sessionExists = await this.store.sessionExists({session: this.sessionName});
         if(!sessionExists) {
             await this.delay(60000); /* Initial delay sync required for session to be stable enough to recover */
@@ -135,11 +139,13 @@ class RemoteAuth extends BaseAuthStrategy {
     }
 
     async deleteRemoteSession() {
+        console.log('*** delete remote');
         const sessionExists = await this.store.sessionExists({session: this.sessionName});
         if (sessionExists) await this.store.delete({session: this.sessionName});
     }
 
     async compressSession() {
+        console.log('*** compress');
         const archive = archiver('zip');
         const stream = fs.createWriteStream(`${this.sessionName}.zip`);
 
@@ -157,6 +163,7 @@ class RemoteAuth extends BaseAuthStrategy {
     }
 
     async unCompressSession(compressedSessionPath) {
+        console.log('*** uncompress');
         await new Promise((resolve, reject) => {
             var zip = new AdmZip(compressedSessionPath);
             zip.extractAllToAsync(this.userDataDir, false, false, (err) => {
@@ -171,6 +178,7 @@ class RemoteAuth extends BaseAuthStrategy {
     }
 
     async deleteMetadata() {
+        console.log('*** delete meta');
         const sessionDirs = [this.tempDir, path.join(this.tempDir, 'Default')];
         for (const dir of sessionDirs) {
             const sessionFiles = await fs.promises.readdir(dir);
