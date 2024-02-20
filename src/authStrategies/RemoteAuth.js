@@ -46,6 +46,7 @@ class RemoteAuth extends BaseAuthStrategy {
     }
 
     async beforeBrowserInitialized() {
+        console.log('*** before Browser Init');
         const puppeteerOpts = this.client.options.puppeteer;
         const sessionDirName = this.clientId ? this.clientId : 'RemoteAuth';
         const dirPath = path.join(this.dataPath, sessionDirName);
@@ -100,6 +101,7 @@ class RemoteAuth extends BaseAuthStrategy {
 
     async storeRemoteSession(options) {
         /* Compress & Store Session */
+        console.log('*** storing remote session');
         const pathExists = await this.isValidPath(this.userDataDir);
         if (pathExists) {
             await this.compressSession();
@@ -114,6 +116,7 @@ class RemoteAuth extends BaseAuthStrategy {
     }
 
     async extractRemoteSession() {
+        console.log('*** extracting remote session');
         const pathExists = await this.isValidPath(this.userDataDir);
         const compressedSessionPath = `${this.sessionName}.zip`;
         const sessionExists = await this.store.sessionExists({session: this.sessionName});
