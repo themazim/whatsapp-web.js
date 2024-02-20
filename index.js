@@ -30,5 +30,8 @@ module.exports = {
     RemoteAuth: require('./src/authStrategies/RemoteAuth'),
     LegacySessionAuth: require('./src/authStrategies/LegacySessionAuth'),
     
+    // Stores
+    SftpStore: require('./src/stores/SftpStore'),
+    
     ...Constants
 };
