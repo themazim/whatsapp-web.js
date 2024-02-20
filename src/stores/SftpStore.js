@@ -1,9 +1,13 @@
 const Client = require('ssh2-sftp-client');
 
 class SftpStore {
+
+    
+
     constructor({host, username, password, port = 22} = {}) {
         this.client = new Client();
         this.config = {host, username, password, port};
+        this.isConnected = false;
         this.validateCredentials();
     }
 
@@ -17,12 +21,14 @@ class SftpStore {
     }
 
     async connect() {
-        if (!this.client.isConnected()) {
+        if (!this.isConnected) {
             await this.client.connect(this.config);
+            this.isConnected = true;
         }
     }
 
     async disconnect() {
+        this.isConnected = false;
         await this.client.end();
     }
 
