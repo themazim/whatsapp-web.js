@@ -33,12 +33,11 @@ class SftpStore {
     async sessionExists(options) {
         try {
             await this.connect(); // Ensure connection before operation
-            await this.client.exists(`${options.session}.zip`);
-            return true;
+            return await this.client.exists(`${options.session}.zip`);
         } catch (err) {
             // Connection errors likely require explicit recovery
             this.disconnect(); // Forcefully close if error occurs
-            throw err; // Propagate the error 
+            return false;
         }
     }
 
