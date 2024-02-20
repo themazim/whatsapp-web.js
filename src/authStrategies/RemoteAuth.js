@@ -47,7 +47,7 @@ class RemoteAuth extends BaseAuthStrategy {
 
     async beforeBrowserInitialized() {
         const puppeteerOpts = this.client.options.puppeteer;
-        const sessionDirName = this.clientId ? `RemoteAuth-${this.clientId}` : 'RemoteAuth';
+        const sessionDirName = this.clientId ? this.clientId : 'RemoteAuth';
         const dirPath = path.join(this.dataPath, sessionDirName);
 
         if (puppeteerOpts.userDataDir && puppeteerOpts.userDataDir !== dirPath) {
