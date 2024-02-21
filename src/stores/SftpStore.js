@@ -11,7 +11,7 @@ class SftpStore {
 
     async validateCredentials() {
         try {
-            await this.client.connect(this.config);
+            await this.client.connect({...this.config, debug: console.log});
             console.log('*** SFTP Connection validated ' + Date.now());
         } catch (err) {
             await this.disconnect(); // Close immediately; we just want to test authentication
@@ -19,9 +19,9 @@ class SftpStore {
         }
     }
 
-    async connect() {
+    async connect() { 
         if (!this.isConnected) {
-            await this.client.connect(this.config);
+            await this.client.connect({...this.config, debug: console.log});
             this.isConnected = true;
         }
     }
