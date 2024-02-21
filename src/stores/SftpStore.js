@@ -42,8 +42,7 @@ class SftpStore {
     async sessionExists(options) {
         try {
             await this.connect(); // Ensure connection before operation
-            const exists = await this.client.exists(`${options.session}.zip`);
-            return exists;
+            return await this.client.exists(`${options.session}.zip`);
         } catch (err) {
             // Connection errors likely require explicit recovery
             this.disconnect(); // Forcefully close if error occurs
