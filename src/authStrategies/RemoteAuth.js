@@ -50,7 +50,6 @@ class RemoteAuth extends BaseAuthStrategy {
     
 
     async beforeBrowserInitialized() {
-        console.log('*** before Browser Init');
         const puppeteerOpts = this.client.options.puppeteer;
 
         if (puppeteerOpts.userDataDir && puppeteerOpts.userDataDir !== this.userDataDir ) {
@@ -66,17 +65,14 @@ class RemoteAuth extends BaseAuthStrategy {
     }
 
     async logout() {
-        console.log('*** logout');
         await this.disconnect();
     }
 
     async destroy() {
-        console.log('*** destroy');
         clearInterval(this.backupSync);
     }
 
     async disconnect() {
-        console.log('*** disconnect');
         await this.deleteRemoteSession();
 
         let pathExists = await this.isValidPath(this.userDataDir);
@@ -90,7 +86,6 @@ class RemoteAuth extends BaseAuthStrategy {
     }
 
     async afterAuthReady() {
-        console.log('*** after auth ready');
         const sessionExists = await this.store.sessionExists({session: this.sessionName});
         if(!sessionExists) {
             await this.delay(60000); /* Initial delay sync required for session to be stable enough to recover */
@@ -104,10 +99,7 @@ class RemoteAuth extends BaseAuthStrategy {
 
     async storeRemoteSession(options) {
         /* Compress & Store Session */
-        console.log('*** storing remote session');
         const pathExists = await this.isValidPath(this.userDataDir);
-        console.log('*** path exists: ', pathExists);
-        console.log('*** options exists: ', options);
         if (pathExists) {
             await this.compressSession();
             await this.store.save({session: this.sessionName});
@@ -121,7 +113,6 @@ class RemoteAuth extends BaseAuthStrategy {
     }
 
     async extractRemoteSession() {
-        console.log('*** extracting remote session');
         const pathExists = await this.isValidPath(this.userDataDir);
         const compressedSessionPath = `${this.sessionName}.zip`;
         const sessionExists = await this.store.sessionExists({session: this.sessionName});
@@ -140,13 +131,11 @@ class RemoteAuth extends BaseAuthStrategy {
     }
 
     async deleteRemoteSession() {
-        console.log('*** delete remote');
         const sessionExists = await this.store.sessionExists({session: this.sessionName});
         if (sessionExists) await this.store.delete({session: this.sessionName});
     }
 
     async compressSession() {
-        console.log('*** compress, dir: ', this.userDataDir);
         const archive = archiver('zip');
         const stream = fs.createWriteStream(`${this.sessionName}.zip`);
         
@@ -166,7 +155,6 @@ class RemoteAuth extends BaseAuthStrategy {
     }
 
     async unCompressSession(compressedSessionPath) {
-        console.log('*** uncompress');
         await new Promise((resolve, reject) => {
             var zip = new AdmZip(compressedSessionPath);
             zip.extractAllToAsync(this.userDataDir, false, false, (err) => {
@@ -181,7 +169,6 @@ class RemoteAuth extends BaseAuthStrategy {
     }
 
     async deleteMetadata() {
-        console.log('*** delete meta');
         const sessionDirs = [this.tempDir, path.join(this.tempDir, 'Default')];
         for (const dir of sessionDirs) {
             const sessionFiles = await fs.promises.readdir(dir);
@@ -208,7 +195,6 @@ class RemoteAuth extends BaseAuthStrategy {
             await fs.promises.access(path);
             return true;
         } catch(err) {
-            console.log('path check failed: ', err);
             return false;
         }
     }

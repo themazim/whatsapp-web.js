@@ -12,8 +12,8 @@ class SftpStore {
     async validateCredentials() {
         try {
             await this.client.connect(this.config);
-            await this.disconnect(); // Close immediately; we just want to test authentication
         } catch (err) {
+            await this.disconnect(); // Close immediately; we just want to test authentication
             throw new Error('Invalid SFTP credentials: ' + err.message);
         }
     }
@@ -31,9 +31,13 @@ class SftpStore {
     }
 
     async sessionExists(options) {
+        console.log('checking session exists start');
         try {
             await this.connect(); // Ensure connection before operation
-            return await this.client.exists(`${options.session}.zip`);
+            console.log('checking session exists connect done');
+            
+            const exists = await this.client.exists(`${options.session}.zip`); 
+            return exists;
         } catch (err) {
             // Connection errors likely require explicit recovery
             this.disconnect(); // Forcefully close if error occurs
