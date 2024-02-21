@@ -12,17 +12,25 @@ class SftpStore {
     async validateCredentials() {
         try {
             await this.connect();
-            console.log('*** validate: ', await this.client.lstat('.'));
         } catch (err) {
             await this.disconnect(); // Close immediately; we just want to test authentication
             throw new Error('Invalid SFTP credentials: ' + err.message);
         }
     }
 
-    async connect() { 
+    async connect() {
+
         if (!this.isConnected) {
             await this.client.connect(this.config);
             this.isConnected = true;
+        } else {
+            // check and re-connect if necessary
+            try {
+                await this.client.lstat('.');
+            } catch (err) {
+                this.isConnected = false;
+                this.connect();
+            }
         }
     }
 
