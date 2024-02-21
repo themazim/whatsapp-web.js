@@ -11,8 +11,8 @@ class SftpStore {
 
     async validateCredentials() {
         try {
-            await this.client.connect({...this.config, debug: console.log});
-            console.log('*** SFTP Connection validated ' + Date.now());
+            await this.connect();
+            console.log('*** validate: ', await this.client.lstat('.'));
         } catch (err) {
             await this.disconnect(); // Close immediately; we just want to test authentication
             throw new Error('Invalid SFTP credentials: ' + err.message);
@@ -21,7 +21,7 @@ class SftpStore {
 
     async connect() { 
         if (!this.isConnected) {
-            await this.client.connect({...this.config, debug: console.log});
+            await this.client.connect(this.config);
             this.isConnected = true;
         }
     }
@@ -32,13 +32,9 @@ class SftpStore {
     }
 
     async sessionExists(options) {
-        console.log('*** checking session exists start ' + Date.now());
         try {
             await this.connect(); // Ensure connection before operation
-            console.log('*** checking session exists connect done ' + Date.now());
-
             const exists = await this.client.exists(`${options.session}.zip`);
-            console.log('*** zip file checked ' + Date.now());
             return exists;
         } catch (err) {
             // Connection errors likely require explicit recovery
