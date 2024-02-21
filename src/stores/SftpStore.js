@@ -1,7 +1,7 @@
 const Client = require('ssh2-sftp-client');
 
 class SftpStore {
-    
+
     constructor({host, username, password, port = 22} = {}) {
         this.client = new Client();
         this.config = {host, username, password, port};
@@ -12,7 +12,7 @@ class SftpStore {
     async validateCredentials() {
         try {
             await this.client.connect(this.config);
-            console.log('*** SFTP Connection validated');
+            console.log('*** SFTP Connection validated ' + Date.now());
         } catch (err) {
             await this.disconnect(); // Close immediately; we just want to test authentication
             throw new Error('Invalid SFTP credentials: ' + err.message);
@@ -32,12 +32,13 @@ class SftpStore {
     }
 
     async sessionExists(options) {
-        console.log('checking session exists start');
+        console.log('*** checking session exists start ' + Date.now());
         try {
             await this.connect(); // Ensure connection before operation
-            console.log('checking session exists connect done');
-            
-            const exists = await this.client.exists(`${options.session}.zip`); 
+            console.log('*** checking session exists connect done ' + Date.now());
+
+            const exists = await this.client.exists(`${options.session}.zip`);
+            console.log('*** zip file checked ' + Date.now());
             return exists;
         } catch (err) {
             // Connection errors likely require explicit recovery
