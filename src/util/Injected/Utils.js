@@ -236,12 +236,16 @@ exports.LoadUtils = () => {
             chat.msgs.add(msg);
             chat.t = msg.t;
             
-            const sendChannelMsgResponse = await window.Store.SendChannelMessage.sendNewsletterMessageJob({
+            const payload = {
                 msg: message,
                 type: message.type === 'chat' ? 'text' : isMedia ? 'media' : message.type,
                 newsletterJid: chat.id.toJid(),
                 ...(isMedia ? { mediaMetadata: msg.avParams() } : {})
-            });
+            };
+            
+            console.log(payload);
+            
+            const sendChannelMsgResponse = await window.Store.SendChannelMessage.sendNewsletterMessageJob(payload);
 
             if (sendChannelMsgResponse.success) {
                 msg.t = sendChannelMsgResponse.ack.t;
