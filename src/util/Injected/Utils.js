@@ -230,14 +230,13 @@ exports.LoadUtils = () => {
 
         if (isChannel) {
             const msg = new window.Store.Msg.modelClass(message);
-
-            return msg;
             const msgDataFromMsgModel = window.Store.SendChannelMessage.msgDataFromMsgModel(msg);
             const isMedia = Object.keys(mediaOptions).length > 0;
             await window.Store.SendChannelMessage.addNewsletterMsgsRecords([msgDataFromMsgModel]);
             chat.msgs.add(msg);
             chat.t = msg.t;
 
+            return msg;
             const sendChannelMsgResponse = await window.Store.SendChannelMessage.sendNewsletterMessageJob({
                 msgData: message,
                 type: message.type === 'chat' ? 'text' : isMedia ? 'media' : message.type,
