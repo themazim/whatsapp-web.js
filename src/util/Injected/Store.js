@@ -81,6 +81,23 @@ exports.ExposeStore = () => {
         ...window.require('WASmaxGroupsMembershipRequestsActionRPC')
     };
 
+    window.Store.ChannelUtils = {
+        ...window.require('WAWebLoadNewsletterPreviewChatAction'),
+        ...window.require('WAWebNewsletterMetadataQueryJob'),
+        ...window.require('WAWebNewsletterCreateJob'),
+        ...window.require('WAWebEditNewsletterMetadataAction'),
+        ...window.require('WAWebNewsletterDeleteAction'),
+        ...window.require('WAWebNewsletterSubscribeAction'),
+        ...window.require('WAWebNewsletterDirectorySearchAction'),
+        ...window.require('WAWebMexMuteNewsletterJob'),
+        ...window.require('WAWebMexUnmuteNewsletterJob'),
+        ...window.require('WAWebMexAcceptNewsletterAdminInviteJob'),
+        ...window.require('WAWebMexRevokeNewsletterAdminInviteJob'),
+        ...window.require('WAWebDemoteNewsletterAdminAction'),
+        countryCodesIso: 'US',
+        currentRegion: 'US',
+    };
+    
 
     if (!window.Store.Chat._find || !window.Store.Chat.findImpl) {
         window.Store.Chat._find = e => {
