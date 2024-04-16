@@ -183,6 +183,10 @@ class Client extends EventEmitter {
                     // refresh qr code
                     window.Store.Cmd.refreshQR();
                 }
+                
+                console.log('#### logging state: '+state);
+                
+                
             });
 
             await this.pupPage.exposeFunction('onAppStateHasSyncedEvent', async () => {
@@ -194,26 +198,31 @@ class Client extends EventEmitter {
                 this.emit(Events.AUTHENTICATED, authEventPayload);
 
                 const injected = await this.pupPage.evaluate(async () => {
+                    console.log('#### injected checking');
                     return typeof window.Store !== 'undefined' && typeof window.WWebJS !== 'undefined';
                 });
 
                 if (!injected) {
+                    console.log('#### NOT injected yet');
                     if (this.options.webVersionCache.type === 'local' && this.currentIndexHtml) {
                         const { type: webCacheType, ...webCacheOptions } = this.options.webVersionCache;
                         const webCache = WebCacheFactory.createWebCache(webCacheType, webCacheOptions);
             
                         await webCache.persist(this.currentIndexHtml, version);
                     }
-
+                    
                     if (isCometOrAbove) {
+                        console.log('#### exposing store');
                         await this.pupPage.evaluate(ExposeStore);
                     } else {
+                        console.log('#### Is below comet');
                         // make sure all modules are ready before injection
                         // 2 second delay after authentication makes sense and does not need to be made dyanmic or removed
                         await new Promise(r => setTimeout(r, 2000)); 
                         await this.pupPage.evaluate(ExposeLegacyStore);
                     }
 
+                    console.log('#### waiting for store');
                     // Check window.Store Injection
                     await this.pupPage.waitForFunction('window.Store != undefined');
             
@@ -221,15 +230,18 @@ class Client extends EventEmitter {
                      * Current connection information
                      * @type {ClientInfo}
                      */
+                    console.log('#### loading conn info');
                     this.info = new ClientInfo(this, await this.pupPage.evaluate(() => {
                         return { ...window.Store.Conn.serialize(), wid: window.Store.User.getMeUser() };
                     }));
 
                     this.interface = new InterfaceController(this);
 
+                    console.log('#### loading utils');
                     //Load util functions (serializers, helper functions)
                     await this.pupPage.evaluate(LoadUtils);
 
+                    console.log('#### attaching listener');
                     await this.attachEventListeners(reinject);
                     reinject = true;
                 }
