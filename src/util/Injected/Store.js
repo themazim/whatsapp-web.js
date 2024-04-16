@@ -85,6 +85,7 @@ exports.ExposeStore = () => {
         ...window.require('WAWebLoadNewsletterPreviewChatAction'),
         ...window.require('WAWebNewsletterMetadataQueryJob'),
         ...window.require('WAWebNewsletterCreateJob'),
+        ...window.require('WAWebNewsletterCreateQueryJob'),
         ...window.require('WAWebEditNewsletterMetadataAction'),
         ...window.require('WAWebNewsletterDeleteAction'),
         ...window.require('WAWebNewsletterSubscribeAction'),
