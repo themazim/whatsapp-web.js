@@ -124,7 +124,7 @@ class Channel extends Base {
         return await this.client.pupPage.evaluate(async (channelId, limit) => {
             const channel = await window.WWebJS.getChat(channelId, { getAsModel: false });
             if (!channel) return [];
-            !limit && (limit = window.Store.ChannelSubscribers.getMaxSubscriberNumber());
+            !limit && (limit = window.Store.ChannelSubscribers.NEWSLETTER_INFO_SUBSCRIBER_DISPLAY_LIMIT); // 9
             const response = await window.Store.ChannelSubscribers.mexFetchNewsletterSubscribers(channelId, limit);
             const contacts = await window.Store.ChannelSubscribers.getSubscribersInContacts(response.subscribers);
             return Promise.all(contacts.map((obj) => ({

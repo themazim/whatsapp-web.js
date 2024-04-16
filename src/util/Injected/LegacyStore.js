@@ -94,6 +94,38 @@ exports.ExposeLegacyStore = () => {
         ...window.mR.findModule('sendMembershipRequestsActionRPC')[0]
     };
 
+    window.Store.ChannelUtils = {
+        ...window.mR.findModule('loadNewsletterPreviewChat')[0],
+        ...window.mR.findModule('queryNewsletterMetadataByInviteCode')[0],
+        ...window.mR.findModule('createNewsletterQuery')[0],
+        ...window.mR.findModule('editNewsletterMetadataAction')[0],
+        ...window.mR.findModule('deleteNewsletterAction')[0],
+        ...window.mR.findModule('subscribeToNewsletterAction')[0],
+        ...window.mR.findModule('unsubscribeFromNewsletterAction')[0],
+        ...window.mR.findModule('fetchNewsletterDirectories')[0],
+        ...window.mR.findModule('muteNewsletter')[0],
+        ...window.mR.findModule('unmuteNewsletter')[0],
+        ...window.mR.findModule('isNewsletterCreationEnabled')[0],
+        ...window.mR.findModule('getRoleByIdentifier')[0],
+        ...window.mR.findModule('acceptNewsletterAdminInvite')[0],
+        ...window.mR.findModule('revokeNewsletterAdminInvite')[0],
+        ...window.mR.findModule('demoteNewsletterAdmin')[0],
+        countryCodesIso: window.mR.findModule(m => m.default && m.default.US === 'United States')[0].default,
+        currentRegion: window.mR.findModule(m => m.default && m.default.getRegion)[0].default.getRegion(),
+    };
+    window.Store.SendChannelMessage = {
+        ...window.mR.findModule('addNewsletterMsgsRecords')[0],
+        ...window.mR.findModule('msgDataFromMsgModel')[0],
+        ...window.mR.findModule('sendNewsletterMessageJob')[0],
+        ...window.mR.findModule('sendNewsletterAdminInviteMessage')[0],
+        ...window.mR.findModule('getRandomFilehash')[0]
+    };
+    window.Store.ChannelSubscribers = {
+        ...window.mR.findModule('mexFetchNewsletterSubscribers')[0],
+        ...window.mR.findModule('getSubscribersInContacts')[0],
+        ...window.mR.findModule('getMaxSubscriberNumber')[0]
+    };
+
     if (!window.Store.Chat._find) {
         window.Store.Chat._find = e => {
             const target = window.Store.Chat.get(e);

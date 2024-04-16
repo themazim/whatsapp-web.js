@@ -959,7 +959,7 @@ class Client extends EventEmitter {
                 return false;
             }
             
-            return await window.Store.SendChannelMessage.sendNewsletterAdminInviteMessage(
+            return await window.Store.SendChannelMessage.createNewsletterAdminInvite(
                 chat,
                 {
                     newsletterWid: channelWid,
