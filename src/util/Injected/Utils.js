@@ -235,14 +235,15 @@ exports.LoadUtils = () => {
             await window.Store.SendChannelMessage.addNewsletterMsgsRecords([msgDataFromMsgModel]);
             chat.msgs.add(msg);
             chat.t = msg.t;
-
-            return msg;
+            
             const sendChannelMsgResponse = await window.Store.SendChannelMessage.sendNewsletterMessageJob({
                 msgData: message,
                 type: message.type === 'chat' ? 'text' : isMedia ? 'media' : message.type,
                 newsletterJid: chat.id.toJid(),
                 ...(isMedia ? { mediaMetadata: msg.avParams() } : {})
             });
+
+            return msg;
 
             if (sendChannelMsgResponse.success) {
                 msg.t = sendChannelMsgResponse.ack.t;
