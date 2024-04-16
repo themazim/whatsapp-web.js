@@ -4,7 +4,7 @@ exports.LoadUtils = () => {
     window.WWebJS = {};
 
     window.WWebJS.sendSeen = async (chatId) => {
-        let chat = window.Store.Chat.get(chatId);
+        let chat = await window.WWebJS.getChat(chatId, { getAsModel: false });
         if (chat !== undefined) {
             await window.Store.SendSeen.sendSeen(chat, false);
             return true;
