@@ -981,7 +981,6 @@ class Client extends EventEmitter {
         }
 
         const sentMsg = await this.pupPage.evaluate(async (chatId, content, options, sendSeen) => {
-            try {
                 const chat = await window.WWebJS.getChat(chatId, {getAsModel: false});
 
                 if (!chat) return null;
@@ -995,10 +994,6 @@ class Client extends EventEmitter {
                 return msg
                     ? window.WWebJS.getMessageModel(msg)
                     : undefined;
-
-            } catch (e) {
-                console.log(e);
-            }
 
         }, chatId, content, internalOptions, sendSeen);
 
