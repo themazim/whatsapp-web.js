@@ -14,6 +14,8 @@ exports.LoadUtils = () => {
     };
 
     window.WWebJS.sendMessage = async (chat, content, options = {}) => {
+        const isChannel = chat.isNewsletter;
+        
         let attOptions = {};
         if (options.attachment) {
             attOptions = options.sendMediaAsSticker
@@ -21,7 +23,8 @@ exports.LoadUtils = () => {
                 : await window.WWebJS.processMediaData(options.attachment, {
                     forceVoice: options.sendAudioAsVoice,
                     forceDocument: options.sendMediaAsDocument,
-                    forceGif: options.sendVideoAsGif
+                    forceGif: options.sendVideoAsGif,
+                    sendToChannel: isChannel
                 });
             
             attOptions.caption = options.caption;
@@ -85,7 +88,7 @@ exports.LoadUtils = () => {
             const { pollName, pollOptions } = options.poll;
             const { allowMultipleAnswers, messageSecret } = options.poll.options;
             _pollOptions = {
-                type: 'poll_creation',
+                type: 'poll_creation', // TODO check this-> type: !isChannel ? 'poll_creation' : 'pollCreation',
                 pollName: pollName,
                 pollOptions: pollOptions,
                 pollSelectableOptionsCount: allowMultipleAnswers ? 0 : 1,
@@ -224,6 +227,30 @@ exports.LoadUtils = () => {
             ...extraOptions
         };
 
+        if (isChannel) {
+            const msg = new window.Store.Msg.modelClass(message);
+            const msgDataFromMsgModel = window.Store.SendChannelMessage.msgDataFromMsgModel(msg);
+            const isMedia = Object.keys(mediaOptions).length > 0;
+            await window.Store.SendChannelMessage.addNewsletterMsgsRecords([msgDataFromMsgModel]);
+            chat.msgs.add(msg);
+            chat.t = msg.t;
+
+            const sendChannelMsgResponse = await window.Store.SendChannelMessage.sendNewsletterMessageJob({
+                msgData: message,
+                type: message.type === 'chat' ? 'text' : isMedia ? 'media' : message.type,
+                newsletterJid: chat.id.toJid(),
+                ...(isMedia ? { mediaMetadata: msg.avParams() } : {})
+            });
+
+            if (sendChannelMsgResponse.success) {
+                msg.t = sendChannelMsgResponse.ack.t;
+                msg.serverId = sendChannelMsgResponse.serverId;
+            }
+            msg.updateAck(1, true);
+            await window.Store.SendChannelMessage.updateNewsletterMsgRecord(msg);
+            return msg;
+        }
+
         await window.Store.SendMessage.addAndSendMsgToChat(chat, message);
         return window.Store.Msg.get(newMsgId._serialized);
     };
@@ -315,7 +342,7 @@ exports.LoadUtils = () => {
         return stickerInfo;
     };
 
-    window.WWebJS.processMediaData = async (mediaInfo, { forceVoice, forceDocument, forceGif }) => {
+    window.WWebJS.processMediaData = async (mediaInfo, { forceVoice, forceDocument, forceGif, sendToChannel }) => {
         const file = window.WWebJS.mediaInfoToFile(mediaInfo);
         const mData = await window.Store.OpaqueData.createFromData(file, file.type);
         const mediaPrep = window.Store.MediaPrep.prepRawMedia(mData, { asDocument: forceDocument });
@@ -350,11 +377,16 @@ exports.LoadUtils = () => {
         mediaObject.consolidate(mediaData.toJSON());
         mediaData.mediaBlob.autorelease();
 
-        const uploadedMedia = await window.Store.MediaUpload.uploadMedia({
+        const dataToUpload = {
             mimetype: mediaData.mimetype,
             mediaObject,
-            mediaType
-        });
+            mediaType,
+            ...(sendToChannel ? { calculateToken: window.Store.SendChannelMessage.getRandomFilehash } : {})
+        };
+
+        const uploadedMedia = !sendToChannel
+            ? await window.Store.MediaUpload.uploadMedia(dataToUpload)
+            : await window.Store.MediaUpload.uploadUnencryptedMedia(dataToUpload);
 
         const mediaEntry = uploadedMedia.mediaEntry;
         if (!mediaEntry) {
@@ -436,10 +468,24 @@ exports.LoadUtils = () => {
         return res;
     };
 
-    window.WWebJS.getChat = async chatId => {
-        const chatWid = window.Store.WidFactory.createWid(chatId);
-        const chat = await window.Store.Chat.find(chatWid);
-        return await window.WWebJS.getChatModel(chat);
+    window.WWebJS.getChat = async (chatId, { getAsModel = true } = {}) => {
+        const isChannel = chatId.match(/@(.+)/)[1] === 'newsletter';
+        let chat;
+
+        if (isChannel) {
+            chat = window.Store.NewsletterCollection.get(chatId);
+            if (!chat) {
+                await window.Store.ChannelUtils.loadNewsletterPreviewChat(chatId);
+                chat = await window.Store.NewsletterCollection.find(window.Store.WidFactory.createWid(chatId));
+            }
+        } else {
+            const chatWid = window.Store.WidFactory.createWid(chatId);
+            chat = window.Store.Chat.get(chatWid) || await window.Store.Chat.find(chatWid);
+        }
+
+        return getAsModel && chat
+            ? await window.WWebJS.getChatModel(chat, { isChannel: isChannel })
+            : chat;
     };
 
     window.WWebJS.getChats = async () => {
@@ -447,6 +493,51 @@ exports.LoadUtils = () => {
 
         const chatPromises = chats.map(chat => window.WWebJS.getChatModel(chat));
         return await Promise.all(chatPromises);
+    };
+
+    window.WWebJS.getChannels = async () => {
+        const channels = window.Store.NewsletterCollection.getModelsArray();
+        const channelPromises = channels.map((channel) => window.WWebJS.getChatModel(channel, { isChannel: true }));
+        return await Promise.all(channelPromises);
+    };
+
+    window.WWebJS.getChatModel = async (chat, { isChannel = false } = {}) => {
+        if (!chat) return null;
+
+        const model = chat.serialize();
+        model.isGroup = chat.isGroup;
+        model.isMuted = chat.mute && chat.mute.isMuted;
+        if (isChannel) {
+            model.isChannel = chat.isNewsletter;
+        } else {
+            model.formattedTitle = chat.formattedTitle;
+        }
+
+        if (chat.groupMetadata) {
+            const chatWid = window.Store.WidFactory.createWid((chat.id._serialized));
+            await window.Store.GroupMetadata.update(chatWid);
+            model.groupMetadata = chat.groupMetadata.serialize();
+        }
+
+        if (chat.newsletterMetadata) {
+            await window.Store.NewsletterMetadataCollection.update(chat.id);
+            model.channelMetadata = chat.newsletterMetadata.serialize();
+            model.channelMetadata.createdAtTs = chat.newsletterMetadata.creationTime;
+        }
+
+        model.lastMessage = null;
+        if (model.msgs && model.msgs.length) {
+            const lastMessage = chat.lastReceivedKey
+                ? window.Store.Msg.get(chat.lastReceivedKey)
+                : null;
+            lastMessage && (model.lastMessage = window.WWebJS.getMessageModel(lastMessage));
+        }
+
+        delete model.msgs;
+        delete model.msgUnsyncedButtonReplyMsgs;
+        delete model.unsyncedButtonReplies;
+
+        return model;
     };
 
     window.WWebJS.getContactModel = contact => {
@@ -962,6 +1053,25 @@ exports.LoadUtils = () => {
             return result;
         } catch (err) {
             return [];
+        }
+    };
+
+    window.WWebJS.subscribeToUnsubscribeFromChannel = async (channelId, action, options = {}) => {
+        const channel = await window.WWebJS.getChat(channelId, { getAsModel: false });
+
+        if (!channel || channel.newsletterMetadata.membershipType === 'owner') return false;
+        options = { eventSurface: 3, deleteLocalModels: options.deleteLocalModels || false };
+
+        try {
+            if (action === 'Subscribe') {
+                await window.Store.ChannelUtils.subscribeToNewsletterAction(channel, options);
+            } else if (action === 'Unsubscribe') {
+                await window.Store.ChannelUtils.unsubscribeFromNewsletterAction(channel, options);
+            } else return false;
+            return true;
+        } catch (err) {
+            if (err.name === 'ServerStatusCodeError') return false;
+            throw err;
         }
     };
 
