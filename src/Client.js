@@ -891,14 +891,14 @@ class Client extends EventEmitter {
             extraOptions: options.extra
         };
 
-        const sendSeen = typeof options.sendSeen === 'undefined' ? true : options.sendSeen;
+        const sendSeen = options.sendSeen !== false;
 
         if (content instanceof MessageMedia) {
-            internalOptions.attachment = content;
+            internalOptions.media = content;
             internalOptions.isViewOnce = options.isViewOnce,
             content = '';
         } else if (options.media instanceof MessageMedia) {
-            internalOptions.attachment = options.media;
+            internalOptions.media = content;
             internalOptions.caption = content;
             internalOptions.isViewOnce = options.isViewOnce,
             content = '';
@@ -923,9 +923,9 @@ class Client extends EventEmitter {
             content = '';
         }
 
-        if (internalOptions.sendMediaAsSticker && internalOptions.attachment) {
-            internalOptions.attachment = await Util.formatToWebpSticker(
-                internalOptions.attachment, {
+        if (internalOptions.sendMediaAsSticker && internalOptions.media) {
+            internalOptions.media = await Util.formatToWebpSticker(
+                internalOptions.media, {
                     name: options.stickerName,
                     author: options.stickerAuthor,
                     categories: options.stickerCategories
@@ -933,20 +933,25 @@ class Client extends EventEmitter {
             );
         }
 
-        const newMessage = await this.pupPage.evaluate(async (chatId, content, options, sendSeen) => {
-            const chatWid = window.Store.WidFactory.createWid(chatId);
-            const chat = await window.Store.Chat.find(chatWid);
+        const sentMsg = await this.pupPage.evaluate(async (chatId, content, options, sendSeen) => {
+            const chat = await window.WWebJS.getChat(chatId, { getAsModel: false });
+
+            if (!chat) return null;
 
 
             if (sendSeen) {
                 await window.WWebJS.sendSeen(chatId);
             }
 
-            const msg = await window.WWebJS.sendMessage(chat, content, options, sendSeen);
-            return window.WWebJS.getMessageModel(msg);
+            const msg = await window.WWebJS.sendMessage(chat, content, options);
+            return msg
+                ? window.WWebJS.getMessageModel(msg)
+                : undefined;
         }, chatId, content, internalOptions, sendSeen);
-
-        return new Message(this, newMessage);
+        
+        return sentMsg
+            ? new Message(this, sentMsg)
+            : undefined;
     }
 
     /**
