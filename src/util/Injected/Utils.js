@@ -230,6 +230,8 @@ exports.LoadUtils = () => {
 
         if (isChannel) {
             const msg = new window.Store.Msg.modelClass(message);
+
+            return msg;
             const msgDataFromMsgModel = window.Store.SendChannelMessage.msgDataFromMsgModel(msg);
             const isMedia = Object.keys(mediaOptions).length > 0;
             await window.Store.SendChannelMessage.addNewsletterMsgsRecords([msgDataFromMsgModel]);
