@@ -1,4 +1,3 @@
-
 import { EventEmitter } from 'events'
 import { RequestInit } from 'node-fetch'
 import * as puppeteer from 'puppeteer'
@@ -583,6 +582,17 @@ declare namespace WAWebJS {
         extract: (options: { session: string, path: string }) => Promise<any> | any,
     }
 
+    /**
+     * Remote-based authentication
+     */
+    export class SftpStore implements Store {
+        constructor(config?: {host, username, password, port })
+        sessionExists: (options: { session: string }) => Promise<boolean> | boolean;
+        delete: (options: { session: string }) => Promise<any> | any;
+        save: (options: { session: string }) => Promise<any> | any;
+        extract: (options: { session: string, path: string }) => Promise<any> | any;
+    }
+    
     /**
      * Legacy session auth strategy
      * Not compatible with multi-device accounts.
