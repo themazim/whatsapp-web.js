@@ -15,37 +15,28 @@ exports.LoadUtils = () => {
 
     window.WWebJS.sendMessage = async (chat, content, options = {}) => {
         const isChannel = chat.isNewsletter;
-        
-        let attOptions = {};
-        if (options.attachment) {
-            attOptions = options.sendMediaAsSticker
-                ? await window.WWebJS.processStickerData(options.attachment)
-                : await window.WWebJS.processMediaData(options.attachment, {
+
+        let mediaOptions = {};
+        if (options.media) {
+            mediaOptions = await window.WWebJS.processMediaData(
+                options.media, {
+                    forceSticker: options.sendMediaAsSticker,
+                    forceGif: options.sendVideoAsGif,
                     forceVoice: options.sendAudioAsVoice,
                     forceDocument: options.sendMediaAsDocument,
-                    forceGif: options.sendVideoAsGif,
                     sendToChannel: isChannel
                 });
-            
-            attOptions.caption = options.caption;
-            content = options.sendMediaAsSticker ? undefined : attOptions.preview;
-            attOptions.isViewOnce = options.isViewOnce;
 
-            delete options.attachment;
+            mediaOptions.caption = options.caption;
+            content = options.sendMediaAsSticker ? undefined : mediaOptions.preview;
+            mediaOptions.isViewOnce = options.isViewOnce;
+            delete options.media;
             delete options.sendMediaAsSticker;
         }
         let quotedMsgOptions = {};
         if (options.quotedMessageId) {
             let quotedMessage = window.Store.Msg.get(options.quotedMessageId);
-
-            // TODO remove .canReply() once all clients are updated to >= v2.2241.6
-            const canReply = window.Store.ReplyUtils ? 
-                window.Store.ReplyUtils.canReplyMsg(quotedMessage.unsafe()) : 
-                quotedMessage.canReply();
-
-            if (canReply) {
-                quotedMsgOptions = quotedMessage.msgContextInfo(chat);
-            }
+            quotedMessage && (quotedMsgOptions = quotedMessage.msgContextInfo(chat));
             delete options.quotedMessageId;
         }
 
@@ -88,7 +79,7 @@ exports.LoadUtils = () => {
             const { pollName, pollOptions } = options.poll;
             const { allowMultipleAnswers, messageSecret } = options.poll.options;
             _pollOptions = {
-                type: 'poll_creation', // TODO check this-> type: !isChannel ? 'poll_creation' : 'pollCreation',
+                type: !isChannel ? 'poll_creation' : 'pollCreation', // TODO check this-> type: !isChannel ? 'poll_creation' : 'pollCreation',
                 pollName: pollName,
                 pollOptions: pollOptions,
                 pollSelectableOptionsCount: allowMultipleAnswers ? 0 : 1,
@@ -187,15 +178,25 @@ exports.LoadUtils = () => {
             delete listOptions.list.footer;
         }
 
+        const lidUser = window.Store.User.getMaybeMeLidUser();
         const meUser = window.Store.User.getMaybeMeUser();
+        const isMD = window.Store.MDBackend;
         const newId = await window.Store.MsgKey.newId();
-        
-        const newMsgId = new window.Store.MsgKey({
-            from: meUser,
+
+        let from = chat.id.isLid() ? lidUser : meUser;
+        let participant;
+
+        if (chat.isGroup) {
+            from = chat.groupMetadata && chat.groupMetadata.isLidAddressingMode ? lidUser : meUser;
+            participant = window.Store.WidFactory.toUserWid(from);
+        }
+
+        const newMsgKey = new window.Store.MsgKey({
+            from: from,
             to: chat.id,
             id: newId,
-            participant: chat.id.isGroup() ? meUser : undefined,
-            selfDir: 'out',
+            participant: isMD && participant,
+            selfDir: 'out'
         });
 
         const extraOptions = options.extraOptions || {};
@@ -205,7 +206,7 @@ exports.LoadUtils = () => {
 
         const message = {
             ...options,
-            id: newMsgId,
+            id: newMsgKey,
             ack: 0,
             body: content,
             from: meUser,
@@ -218,8 +219,8 @@ exports.LoadUtils = () => {
             ...ephemeralFields,
             ...locationOptions,
             ..._pollOptions,
-            ...attOptions,
-            ...(attOptions.toJSON ? attOptions.toJSON() : {}),
+            ...mediaOptions,
+            ...(mediaOptions.toJSON ? mediaOptions.toJSON() : {}),
             ...quotedMsgOptions,
             ...vcardOptions,
             ...buttonOptions,
@@ -230,7 +231,7 @@ exports.LoadUtils = () => {
         if (isChannel) {
             const msg = new window.Store.Msg.modelClass(message);
             const msgDataFromMsgModel = window.Store.SendChannelMessage.msgDataFromMsgModel(msg);
-            const isMedia = Object.keys(attOptions).length > 0;
+            const isMedia = Object.keys(mediaOptions).length > 0;
             await window.Store.SendChannelMessage.addNewsletterMsgsRecords([msgDataFromMsgModel]);
             chat.msgs.add(msg);
             chat.t = msg.t;
@@ -252,7 +253,7 @@ exports.LoadUtils = () => {
         }
 
         await window.Store.SendMessage.addAndSendMsgToChat(chat, message);
-        return window.Store.Msg.get(newMsgId._serialized);
+        return window.Store.Msg.get(newMsgKey._serialized);
     };
 	
     window.WWebJS.editMessage = async (msg, content, options = {}) => {
