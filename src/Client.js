@@ -1651,12 +1651,6 @@ class Client extends EventEmitter {
         return await this.pupPage.evaluate(async (title, options) => {
             let response, { description = null, picture = null } = options;
 
-            console.log(window.Store.ChannelUtils);
-            
-            if (!window.Store.ChannelUtils.isNewsletterCreationEnabled()) {
-                return 'CreateChannelError: A channel creation is not enabled';
-            }
-
             if (picture) {
                 picture = await window.WWebJS.cropAndResizeImage(picture, {
                     asDataUrl: true,
