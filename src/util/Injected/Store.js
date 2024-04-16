@@ -97,7 +97,19 @@ exports.ExposeStore = () => {
         countryCodesIso: 'US',
         currentRegion: 'US',
     };
-    
+
+    window.Store.SendChannelMessage = {
+        ...window.require('WAWebNewsletterUpdateMsgsRecordsJob'),
+        ...window.require('WAWebMsgDataFromModel'),
+        ...window.require('WAWebNewsletterSendMessageJob'),
+        ...window.require('WAWebMexCreateNewsletterAdminInviteJob'),
+        ...window.require('WAMediaCalculateFilehash'),
+    };
+
+    window.Store.ChannelSubscribers = {
+        ...window.require('WAWebMexFetchNewsletterSubscribersJob'),
+        ...window.require('WAWebNewsletterSubscriberListAction'),
+    };
 
     if (!window.Store.Chat._find || !window.Store.Chat.findImpl) {
         window.Store.Chat._find = e => {
