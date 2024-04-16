@@ -243,8 +243,6 @@ exports.LoadUtils = () => {
                 ...(isMedia ? { mediaMetadata: msg.avParams() } : {})
             });
 
-            return msg;
-
             if (sendChannelMsgResponse.success) {
                 msg.t = sendChannelMsgResponse.ack.t;
                 msg.serverId = sendChannelMsgResponse.serverId;
