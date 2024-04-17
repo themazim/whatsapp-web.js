@@ -27,6 +27,9 @@ module.exports = {
     NoAuth: require('./src/authStrategies/NoAuth'),
     LocalAuth: require('./src/authStrategies/LocalAuth'),
     RemoteAuth: require('./src/authStrategies/RemoteAuth'),
+
+    // Stores
+    SftpStore: require('./src/stores/SftpStore'),
     
     ...Constants
 };
