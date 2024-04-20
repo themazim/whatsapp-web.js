@@ -237,7 +237,7 @@ exports.LoadUtils = () => {
             chat.t = msg.t;
             
             const payload = {
-                msg: message,
+                msg: msg,
                 type: message.type === 'chat' ? 'text' : isMedia ? 'media' : message.type,
                 newsletterJid: chat.id.toJid(),
                 ...(isMedia ? { mediaMetadata: msg.avParams() } : {})
