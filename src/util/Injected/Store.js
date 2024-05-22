@@ -55,7 +55,7 @@ exports.ExposeStore = () => {
     window.Store.Settings = window.require('WAWebUserPrefsGeneral');
     
     window.Store.ForwardUtils = {
-        ...window.require("WAWebForwardMessagesToChat")
+        ...window.require('WAWebForwardMessagesToChat')
     };
 
     window.Store.StickerTools = {
@@ -144,13 +144,7 @@ exports.ExposeStore = () => {
         module[target.function] = modifiedFunction;
     };
 
-    window.injectToFunction({module: 'WAWebBackendJobsCommon', function: 'mediaTypeFromProtobuf'}, (func, ...args) => {
-        const [proto] = args;
-        return proto.locationMessage ? null : func(...args);
-    });
+    window.injectToFunction({ module: 'WAWebBackendJobsCommon', function: 'mediaTypeFromProtobuf' }, (func, ...args) => { const [proto] = args; return proto.locationMessage ? null : func(...args); });
 
-    window.injectToFunction({module: 'WAWebE2EProtoUtils', function: 'typeAttributeFromProtobuf'}, (func, ...args) => {
-        const [proto] = args;
-        return proto.locationMessage || proto.groupInviteMessage ? 'text' : func(...args);
-    });
+    window.injectToFunction({ module: 'WAWebE2EProtoUtils', function: 'typeAttributeFromProtobuf' }, (func, ...args) => { const [proto] = args; return proto.locationMessage || proto.groupInviteMessage ? 'text' : func(...args); });
 };
