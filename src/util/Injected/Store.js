@@ -28,6 +28,8 @@ exports.ExposeStore = () => {
     window.Store.UserConstructor = window.require('WAWebWid');
     window.Store.Validators = window.require('WALinkify');
     window.Store.VCard = window.require('WAWebFrontendVcardUtils');
+    window.Store.VCardParsingUtils = window.require('WAWebVcardParsingUtils');
+    window.Store.VCardGetNameFromParsed = window.require('WAWebVcardGetNameFromParsed');
     window.Store.WidFactory = window.require('WAWebWidFactory');
     window.Store.ProfilePic = window.require('WAWebContactProfilePicThumbBridge');
     window.Store.PresenceUtils = window.require('WAWebPresenceChatAction');
