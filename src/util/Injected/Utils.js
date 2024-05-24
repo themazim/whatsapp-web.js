@@ -126,6 +126,7 @@ exports.LoadUtils = () => {
             try {
                 const parsed = window.Store.VCardParsingUtils.parseVcard(content);
                 if (parsed) {
+                    console.log('......prased vcard');
                     vcardOptions = {
                         type: 'vcard',
                         vcardFormattedName: window.Store.VCardGetNameFromParsed.vcardGetNameFromParsed(parsed)
