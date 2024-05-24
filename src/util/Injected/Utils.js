@@ -122,14 +122,12 @@ exports.LoadUtils = () => {
             delete options.contactCardList;
         } else if (options.parseVCards && typeof (content) === 'string' && content.startsWith('BEGIN:VCARD')) {
             delete options.parseVCards;
-            console.log('....parsing vcard');
             try {
                 const parsed = window.Store.VCardParsingUtils.parseVcard(content);
                 if (parsed) {
-                    console.log('......prased vcard');
                     vcardOptions = {
                         type: 'vcard',
-                        vcardFormattedName: window.Store.VCardGetNameFromParsed.vcardGetNameFromParsed(parsed)
+                        vcardFormattedName: parsed.N[0].value.join(' ').trim()
                     };
                 }
             } catch (_) {
