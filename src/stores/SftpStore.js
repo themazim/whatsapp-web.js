@@ -21,8 +21,13 @@ class SftpStore {
     async connect() {
 
         if (!this.isConnected) {
-            await this.client.connect(this.config);
-            this.isConnected = true;
+            try {
+                await this.client.connect(this.config);
+                this.isConnected = true;
+            } catch (err) {
+                console.error('[SFTPStore] SSH failed to connect', err);
+                this.isConnected = false;
+            }
         } else {
             // check and re-connect if necessary
             try {
@@ -36,13 +41,20 @@ class SftpStore {
 
     async disconnect() {
         this.isConnected = false;
-        await this.client.end();
+        try {
+            await this.client.end();
+        } catch (err) {
+            console.error('[SFTPStore] SSH failed to disconnect', err);
+        }
+
     }
 
     async sessionExists(options) {
         try {
             await this.connect(); // Ensure connection before operation
-            return await this.client.exists(`${options.session}.zip`);
+            const exists = await this.client.exists(`${options.session}.zip`);
+            await this.disconnect();
+            return exists;
         } catch (err) {
             // Connection errors likely require explicit recovery
             this.disconnect(); // Forcefully close if error occurs
@@ -54,6 +66,7 @@ class SftpStore {
         try {
             await this.connect();
             await this.client.fastPut(`${options.session}.zip`, `${options.session}.zip`);
+            await this.disconnect();
         } catch (err) {
             // Connection errors likely require explicit recovery
             this.disconnect(); // Forcefully close if error occurs
@@ -65,6 +78,7 @@ class SftpStore {
         try {
             await this.connect();
             await this.client.fastGet(`${options.session}.zip`, options.path);
+            await this.disconnect();
         } catch (err) {
             // Connection errors likely require explicit recovery
             this.disconnect(); // Forcefully close if error occurs
@@ -76,6 +90,7 @@ class SftpStore {
         try {
             await this.connect();
             await this.client.delete(`${options.session}.zip`);
+            await this.disconnect();
         } catch (err) {
             // Connection errors likely require explicit recovery
             this.disconnect(); // Forcefully close if error occurs
