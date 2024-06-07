@@ -12,6 +12,7 @@ class SftpStore {
     async validateCredentials() {
         try {
             await this.connect();
+            await this.disconnect();
         } catch (err) {
             await this.disconnect(); // Close immediately; we just want to test authentication
             throw new Error('Invalid SFTP credentials: ' + err.message);
