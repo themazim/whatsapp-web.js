@@ -128,11 +128,11 @@ class RemoteAuth extends BaseAuthStrategy {
                 await this.unCompressSession(compressedSessionPath);    
             } catch (err){
                 // failed to extract session
-                console.error('[WWEBJS] failed to extract ZIP file');
+                console.error('[WWEBJS] failed to extract ZIP file: '+this.sessionName);
                 try {
                     fs.mkdirSync(this.userDataDir, { recursive: true });
                 } catch (err2){
-                    console.error('[WWEBJS] failed to create new session after failed extract');
+                    console.error('[WWEBJS] failed to create new session after failed extract: '+this.sessionName);
                 }
             }
             
