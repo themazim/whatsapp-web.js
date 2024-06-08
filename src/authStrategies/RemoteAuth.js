@@ -124,7 +124,18 @@ class RemoteAuth extends BaseAuthStrategy {
         }
         if (sessionExists) {
             await this.store.extract({session: this.sessionName, path: compressedSessionPath});
-            await this.unCompressSession(compressedSessionPath);
+            try {
+                await this.unCompressSession(compressedSessionPath);    
+            } catch (err){
+                // failed to extract session
+                console.error('[WWEBJS] failed to extract ZIP file');
+                try {
+                    fs.mkdirSync(this.userDataDir, { recursive: true });
+                } catch (err2){
+                    console.error('[WWEBJS] failed to create new session after failed extract');
+                }
+            }
+            
         } else {
             fs.mkdirSync(this.userDataDir, { recursive: true });
         }
