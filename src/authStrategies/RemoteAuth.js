@@ -4,9 +4,11 @@
 try {
     var fs = require('fs-extra');
     var AdmZip = require('adm-zip');
+    var unzipper = require('unzipper');
     var archiver = require('archiver');
 } catch {
     fs = undefined;
+    unzipper = undefined;
     AdmZip = undefined;
     archiver = undefined;
 }
@@ -123,20 +125,22 @@ class RemoteAuth extends BaseAuthStrategy {
             }).catch(() => {});
         }
         if (sessionExists) {
-            await this.store.extract({session: this.sessionName, path: compressedSessionPath});
             try {
+                await this.store.extract({session: this.sessionName, path: compressedSessionPath});
                 await this.unCompressSession(compressedSessionPath);    
             } catch (err){
                 // failed to extract session
-                console.error('[WWEBJS] failed to extract ZIP file: '+this.sessionName);
+                console.error('[WWEBJS] failed to extract ZIP file, retrying with unzipper: '+this.sessionName);
+                console.error(err);
                 try {
+                    await this.unCompressSessionUnzipper(compressedSessionPath);
+                } catch (err2){
+                    console.error('[WWEBJS] failed to unzip fall back to QR: '+this.sessionName);
                     await fs.promises.rm(this.userDataDir, {
                         recursive: true,
                         force: true
                     }).catch(() => {});
                     fs.mkdirSync(this.userDataDir, { recursive: true });
-                } catch (err2){
-                    console.error('[WWEBJS] failed to create new session after failed extract: '+this.sessionName);
                 }
             }
             
@@ -179,6 +183,18 @@ class RemoteAuth extends BaseAuthStrategy {
                     resolve();
                 }
             });
+        });
+        await fs.promises.unlink(compressedSessionPath);
+    }
+
+    async unCompressSessionUnzipper(compressedSessionPath) {
+        var stream = fs.createReadStream(compressedSessionPath);
+        await new Promise((resolve, reject) => {
+            stream.pipe(unzipper.Extract({
+                path: this.userDataDir
+            }))
+                .on('error', err => reject(err))
+                .on('finish', () => resolve());
         });
         await fs.promises.unlink(compressedSessionPath);
     }
