@@ -136,6 +136,7 @@ class RemoteAuth extends BaseAuthStrategy {
                 console.error(err);
                 try {
                     await this.unCompressSessionUnzipper(compressedSessionPath);
+                    console.error(err);
                 } catch (err2){
                     console.error('[WWEBJS] failed to unzip fall back to QR: '+this.sessionName);
                     await fs.promises.rm(this.userDataDir, {
