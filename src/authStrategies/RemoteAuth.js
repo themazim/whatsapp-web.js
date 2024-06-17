@@ -133,12 +133,12 @@ class RemoteAuth extends BaseAuthStrategy {
             } catch (err){
                 // failed to extract session
                 console.error('[WWEBJS] failed to extract ZIP file, retrying with unzipper: '+this.sessionName);
-                console.error(err);
+                console.error(this.sessionName, err);
                 try {
                     await this.unCompressSessionUnzipper(compressedSessionPath);
-                    console.error(err);
                 } catch (err2){
                     console.error('[WWEBJS] failed to unzip fall back to QR: '+this.sessionName);
+                    console.error(this.sessionName, err2);
                     await fs.promises.rm(this.userDataDir, {
                         recursive: true,
                         force: true
