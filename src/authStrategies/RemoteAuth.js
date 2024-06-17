@@ -4,13 +4,15 @@
 try {
     var fs = require('fs-extra');
     var AdmZip = require('adm-zip');
-    var unzipper = require('unzipper');
     var archiver = require('archiver');
+    var util = require('util');
+    var exec = util.promisify(require('child_process').exec);
 } catch {
     fs = undefined;
-    unzipper = undefined;
     AdmZip = undefined;
     archiver = undefined;
+    util = undefined;
+    exec = undefined;
 }
 
 const path = require('path');
@@ -188,14 +190,8 @@ class RemoteAuth extends BaseAuthStrategy {
     }
 
     async unCompressSessionUnzipper(compressedSessionPath) {
-        var stream = fs.createReadStream(compressedSessionPath);
-        await new Promise((resolve, reject) => {
-            stream.pipe(unzipper.Extract({
-                path: this.userDataDir
-            }))
-                .on('error', err => reject(err))
-                .on('finish', () => resolve());
-        });
+        console.log('unzip cmd: '+'unzip /home/forge/default/'+compressedSessionPath+' -d '+this.userDataDir);
+        await exec('unzip /home/forge/default/'+compressedSessionPath+' -d '+this.userDataDir);
         await fs.promises.unlink(compressedSessionPath);
     }
 
