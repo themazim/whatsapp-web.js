@@ -3,12 +3,16 @@
 /* Require Optional Dependencies */
 try {
     var fs = require('fs-extra');
-    var unzipper = require('unzipper');
+    var AdmZip = require('adm-zip');
     var archiver = require('archiver');
+    var util = require('util');
+    var exec = util.promisify(require('child_process').exec);
 } catch {
     fs = undefined;
-    unzipper = undefined;
+    AdmZip = undefined;
     archiver = undefined;
+    util = undefined;
+    exec = undefined;
 }
 
 const path = require('path');
@@ -25,7 +29,7 @@ const BaseAuthStrategy = require('./BaseAuthStrategy');
  */
 class RemoteAuth extends BaseAuthStrategy {
     constructor({ clientId, dataPath, store, backupSyncIntervalMs } = {}) {
-        if (!fs && !unzipper && !archiver) throw new Error('Optional Dependencies [fs-extra, unzipper, archiver] are required to use RemoteAuth. Make sure to run npm install correctly and remove the --no-optional flag');
+        if (!fs && !AdmZip && !archiver) throw new Error('Optional Dependencies [fs-extra, unzipper, archiver] are required to use RemoteAuth. Make sure to run npm install correctly and remove the --no-optional flag');
         super();
 
         const idRegex = /^[-_\w]+$/i;
@@ -43,25 +47,23 @@ class RemoteAuth extends BaseAuthStrategy {
         this.dataPath = path.resolve(dataPath || './.wwebjs_auth/');
         this.tempDir = `${this.dataPath}/wwebjs_temp_session_${this.clientId}`;
         this.requiredDirs = ['Default', 'IndexedDB', 'Local Storage']; /* => Required Files & Dirs in WWebJS to restore session */
+        const sessionDirName = this.clientId ? this.clientId : 'RemoteAuth';
+        this.userDataDir = path.join(this.dataPath, sessionDirName);
+        this.sessionName = sessionDirName;
     }
 
     async beforeBrowserInitialized() {
         const puppeteerOpts = this.client.options.puppeteer;
-        const sessionDirName = this.clientId ? `RemoteAuth-${this.clientId}` : 'RemoteAuth';
-        const dirPath = path.join(this.dataPath, sessionDirName);
 
-        if (puppeteerOpts.userDataDir && puppeteerOpts.userDataDir !== dirPath) {
+        if (puppeteerOpts.userDataDir && puppeteerOpts.userDataDir !== this.userDataDir) {
             throw new Error('RemoteAuth is not compatible with a user-supplied userDataDir.');
         }
-
-        this.userDataDir = dirPath;
-        this.sessionName = sessionDirName;
 
         await this.extractRemoteSession();
 
         this.client.options.puppeteer = {
             ...puppeteerOpts,
-            userDataDir: dirPath
+            userDataDir: this.userDataDir
         };
     }
 
@@ -121,11 +123,28 @@ class RemoteAuth extends BaseAuthStrategy {
             await fs.promises.rm(this.userDataDir, {
                 recursive: true,
                 force: true
-            }).catch(() => {});
+            }).catch(() => {}); 
         }
         if (sessionExists) {
-            await this.store.extract({session: this.sessionName, path: compressedSessionPath});
-            await this.unCompressSession(compressedSessionPath);
+            try {
+                await this.store.extract({session: this.sessionName, path: compressedSessionPath});
+                await this.unCompressSession(compressedSessionPath);
+            } catch (err){
+                // failed to extract session
+                console.error('[WWEBJS] failed to extract ZIP file, retrying with unzipper: '+this.sessionName);
+                console.error(this.sessionName, err);
+                try {
+                    await this.unCompressSessionUnzipper(compressedSessionPath);
+                } catch (err2){
+                    console.error('[WWEBJS] failed to unzip fall back to QR: '+this.sessionName);
+                    console.error(this.sessionName, err2);
+                    await fs.promises.rm(this.userDataDir, {
+                        recursive: true,
+                        force: true
+                    }).catch(() => {});
+                    fs.mkdirSync(this.userDataDir, { recursive: true });
+                }
+            }
         } else {
             fs.mkdirSync(this.userDataDir, { recursive: true });
         }
@@ -154,14 +173,22 @@ class RemoteAuth extends BaseAuthStrategy {
     }
 
     async unCompressSession(compressedSessionPath) {
-        var stream = fs.createReadStream(compressedSessionPath);
         await new Promise((resolve, reject) => {
-            stream.pipe(unzipper.Extract({
-                path: this.userDataDir
-            }))
-                .on('error', err => reject(err))
-                .on('finish', () => resolve());
+            var zip = new AdmZip(compressedSessionPath);
+            zip.extractAllToAsync(this.userDataDir, false, false, (err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
         });
+        await fs.promises.unlink(compressedSessionPath);
+    }
+
+    async unCompressSessionUnzipper(compressedSessionPath) {
+        console.log('unzip cmd: '+'unzip /home/forge/default/'+compressedSessionPath+' -d '+this.userDataDir);
+        await exec('unzip /home/forge/default/'+compressedSessionPath+' -d '+this.userDataDir);
         await fs.promises.unlink(compressedSessionPath);
     }
 
@@ -191,7 +218,7 @@ class RemoteAuth extends BaseAuthStrategy {
         try {
             await fs.promises.access(path);
             return true;
-        } catch {
+        } catch(err) {
             return false;
         }
     }
