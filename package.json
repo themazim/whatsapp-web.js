@@ -30,6 +30,7 @@
   "homepage": "https://wwebjs.dev/",
   "dependencies": {
     "@pedroslopez/moduleraid": "github:wwebjs/moduleRaid",
+    "adm-zip": "^0.5.14",
     "fluent-ffmpeg": "2.1.2",
     "mime": "^3.0.0",
     "node-fetch": "^2.6.9",
