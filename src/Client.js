@@ -1593,10 +1593,12 @@ class Client extends EventEmitter {
 
             try {
                 createGroupResult = await window.Store.GroupUtils.createGroup(
-                    title,
+                    {
+                        title,
+                        messageTimer,
+                        parentGroupWid
+                    },
                     participantWids,
-                    messageTimer,
-                    parentGroupWid
                 );
             } catch (err) {
                 return 'CreateGroupError: An unknown error occupied while creating a group';
