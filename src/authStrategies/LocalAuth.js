@@ -46,7 +46,7 @@ class LocalAuth extends BaseAuthStrategy {
         if (this.userDataDir) {
             await fs.promises.rm(this.userDataDir, { recursive: true, force: true })
                 .catch((e) => {
-                    throw new Error(e);
+                    console.error('Failedt to delete user Data dir', e);
                 });
         }
     }
