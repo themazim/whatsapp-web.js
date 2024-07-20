@@ -160,21 +160,31 @@ class Client extends EventEmitter {
                 return typeof window.onQRChangedEvent !== 'undefined';
             });
             if (!injected) {
-                await this.pupPage.exposeFunction('onQRChangedEvent', async (qr) => {
-                    /**
-                    * Emitted when a QR code is received
-                    * @event Client#qr
-                    * @param {string} qr QR Code
-                    */
-                    this.emit(Events.QR_RECEIVED, qr);
-                    if (this.options.qrMaxRetries > 0) {
-                        qrRetries++;
-                        if (qrRetries > this.options.qrMaxRetries) {
-                            this.emit(Events.DISCONNECTED, 'Max qrcode retries reached');
-                            await this.destroy();
+                try {
+                    await this.pupPage.exposeFunction('onQRChangedEvent', async (qr) => {
+                        /**
+                         * Emitted when a QR code is received
+                         * @event Client#qr
+                         * @param {string} qr QR Code
+                         */
+                        this.emit(Events.QR_RECEIVED, qr);
+                        if (this.options.qrMaxRetries > 0) {
+                            qrRetries++;
+                            if (qrRetries > this.options.qrMaxRetries) {
+                                this.emit(Events.DISCONNECTED, 'Max qrcode retries reached');
+                                await this.destroy();
+                            }
                         }
-                    }
-                });
+                    }).catch((err) => {
+                        throw err;
+                    });
+                } catch (e) {
+                    console.error('failed to bind to QR change event');
+                    console.error(e);
+                    await this.destroy();
+                    // session restore failed so try again but without session to force new authentication
+                    return this.initialize();
+                }
             }
 
 
