@@ -199,6 +199,13 @@ declare namespace WAWebJS {
          * @param flag true/false on or off
          */
         setAutoDownloadAudio(flag: boolean): Promise<void>
+
+        /**
+         * Changing the background synchronization setting
+         * @param flag true/false on or off
+         */
+        setBackgroundSync(flag: boolean): Promise<void>
+        
         /**
          * Changes the autoload Documents
          * @param flag true/false on or off

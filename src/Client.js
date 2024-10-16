@@ -2052,6 +2052,22 @@ class Client extends EventEmitter {
             return flag;
         }, flag);
     }
+
+    /**
+     * Setting background synchronization
+     * @param {boolean} flag true/false
+     * @returns {Promise<boolean>}
+     */
+    async setBackgroundSync(flag) {
+        return await this.pupPage.evaluate(async flag => {
+            const backSync = window.Store.Settings.getGlobalOfflineNotifications();
+            if (backSync === flag) {
+                return flag;
+            }
+            await window.Store.Settings.setGlobalOfflineNotifications(flag);
+            return flag;
+        }, flag);
+    }
 }
 
 module.exports = Client;
