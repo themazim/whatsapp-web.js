@@ -604,8 +604,13 @@ declare namespace WAWebJS {
     /**
      * S3-based authentication
      */
-    export const AwsS3Store: typeof import("./src/stores/AwsS3Store");
-    export const S3Client: typeof import("./src/stores/AwsS3Store");
+    export class AwsS3Store implements Store {
+        constructor(config?: {bucketName, remoteDataPath, s3Client})
+        sessionExists: (options: { session: string }) => Promise<boolean> | boolean;
+        delete: (options: { session: string }) => Promise<any> | any;
+        save: (options: { session: string }) => Promise<any> | any;
+        extract: (options: { session: string, path: string }) => Promise<any> | any;
+    }
     
     /**
      * Legacy session auth strategy
