@@ -600,6 +600,11 @@ declare namespace WAWebJS {
         save: (options: { session: string }) => Promise<any> | any;
         extract: (options: { session: string, path: string }) => Promise<any> | any;
     }
+
+    /**
+     * S3-based authentication
+     */
+    export const AwsS3Store: typeof import("./src/stores/AwsS3Store");
     
     /**
      * Legacy session auth strategy

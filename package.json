@@ -29,6 +29,7 @@
   },
   "homepage": "https://wwebjs.dev/",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.677.0",
     "@pedroslopez/moduleraid": "github:wwebjs/moduleRaid",
     "adm-zip": "^0.5.14",
     "fluent-ffmpeg": "2.1.2",

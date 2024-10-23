@@ -4,7 +4,7 @@ const Constants = require('./src/util/Constants');
 
 module.exports = {
     Client: require('./src/Client'),
-    
+
     version: require('./package.json').version,
 
     // Structures
@@ -23,7 +23,7 @@ module.exports = {
     ProductMetadata: require('./src/structures/ProductMetadata'),
     List: require('./src/structures/List'),
     Buttons: require('./src/structures/Buttons'),
-    
+
     // Auth Strategies
     NoAuth: require('./src/authStrategies/NoAuth'),
     LocalAuth: require('./src/authStrategies/LocalAuth'),
@@ -31,6 +31,7 @@ module.exports = {
 
     // Stores
     SftpStore: require('./src/stores/SftpStore'),
-    
+    AwsS3Store: require('./src/stores/AwsS3Store'),
+
     ...Constants
 };
