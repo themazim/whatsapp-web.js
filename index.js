@@ -32,6 +32,7 @@ module.exports = {
     // Stores
     SftpStore: require('./src/stores/SftpStore'),
     AwsS3Store: require('./src/stores/AwsS3Store'),
+    S3Client: require('./src/stores/AwsS3Store'),
 
     ...Constants
 };
