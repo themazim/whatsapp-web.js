@@ -577,7 +577,8 @@ declare namespace WAWebJS {
             dataPath?: string,
             backupSyncIntervalMs: number
         });
-        storeRemoteSession: (options?: {emit?: boolean}) => void
+        storeRemoteSession: (options?: {emit?: boolean}) => Promise<void>
+        extractRemoteSession: () => Promise<void>
     }
 
     /** 
